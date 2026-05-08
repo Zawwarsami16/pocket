@@ -9,6 +9,16 @@ import { harvestAndStore, awarenessBlock } from './memory';
 import { estimateMessagesTokens } from './tokens';
 import type { Session } from '../db/schema';
 
+function anySignal(signals: AbortSignal[]): AbortSignal {
+  if (typeof (AbortSignal as any).any === 'function') return (AbortSignal as any).any(signals);
+  const ctrl = new AbortController();
+  for (const s of signals) {
+    if (s.aborted) { ctrl.abort((s as any).reason); break; }
+    s.addEventListener('abort', () => ctrl.abort((s as any).reason), { once: true });
+  }
+  return ctrl.signal;
+}
+
 const DEFAULT_SYSTEM = `You are Pocket — a fast, plain-spoken assistant. Reply directly. No preamble, no closers.
 
 If the user shares something worth remembering across sessions (preferences, facts, projects, names, recurring patterns), end your reply with one or more lines like:
@@ -83,6 +93,17 @@ export async function sendTurn(session: Session, userText: string, attachmentIds
   let inTok = 0, outTok = 0;
   let errored = false;
 
+  const watchdog = new AbortController();
+  const linkedSignal = opts.signal
+    ? anySignal([opts.signal, watchdog.signal])
+    : watchdog.signal;
+  let stalledTimer: ReturnType<typeof setTimeout> | null = null;
+  const resetStall = () => {
+    if (stalledTimer) clearTimeout(stalledTimer);
+    stalledTimer = setTimeout(() => watchdog.abort(new Error('Response stalled (no chunks for 90s).')), 90_000);
+  };
+  resetStall();
+
   try {
     for await (const chunk of provider.chat(
       {
@@ -93,8 +114,9 @@ export async function sendTurn(session: Session, userText: string, attachmentIds
       },
       keyEntry.apiKey,
       keyEntry.baseUrl,
-      opts.signal
+      linkedSignal
     )) {
+      resetStall();
       if (chunk.type === 'delta' && chunk.text) {
         buffer += chunk.text;
         handlers.onDelta?.(chunk.text);
@@ -110,14 +132,23 @@ export async function sendTurn(session: Session, userText: string, attachmentIds
       }
     }
   } catch (e: any) {
+    if (stalledTimer) clearTimeout(stalledTimer);
     if (e?.name === 'AbortError') {
-      await updateMessage(placeholder.id, { content: buffer + '\n\n_[stopped]_' });
+      const reason = watchdog.signal.aborted ? 'Response stalled (no chunks for 90s).' : '_[stopped]_';
+      if (watchdog.signal.aborted) {
+        errored = true;
+        handlers.onError?.(reason);
+        await updateMessage(placeholder.id, { error: reason });
+      } else {
+        await updateMessage(placeholder.id, { content: buffer + '\n\n_[stopped]_' });
+      }
     } else {
       errored = true;
       handlers.onError?.(e?.message || String(e));
       await updateMessage(placeholder.id, { error: e?.message || String(e) });
     }
   }
+  if (stalledTimer) clearTimeout(stalledTimer);
 
   if (!errored) {
     const { cleaned } = await harvestAndStore(buffer, session.id);

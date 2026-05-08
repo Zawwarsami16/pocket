@@ -20,6 +20,7 @@ export default function App() {
   const [cacheSystem, setCacheSystem] = useState(true);
   const [keepLast, setKeepLast] = useState(16);
   const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const session = useLiveQuery(async () => {
@@ -54,7 +55,7 @@ export default function App() {
     }
 
     await sendTurn(session, text, attachmentIds, {
-      onError: (e) => console.error('chat error:', e),
+      onError: (e) => { console.error('chat error:', e); setToast(e); },
       onDone: () => { setBusy(false); abortRef.current = null; }
     }, {
       compressMode,
@@ -69,11 +70,11 @@ export default function App() {
     setBusy(false);
   }
 
-  function applySettings(providerId: string, modelId: string) {
+  async function applySettings(providerId: string, modelId: string) {
     setDefaultProvider(providerId);
     setDefaultModel(modelId);
     if (session && (session.providerId !== providerId || session.modelId !== modelId)) {
-      setSessionModel(session.id, providerId, modelId);
+      await setSessionModel(session.id, providerId, modelId);
     }
   }
 
@@ -105,6 +106,13 @@ export default function App() {
         )}
       </div>
       <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} onApply={applySettings} />
+      {toast && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 max-w-2xl bg-red-950/90 border border-red-900 text-red-200 text-xs px-4 py-2.5 rounded-lg shadow-2xl backdrop-blur z-50 flex items-start gap-3">
+          <span className="font-semibold text-red-300 shrink-0">⚠</span>
+          <span className="flex-1 break-words font-mono">{toast}</span>
+          <button onClick={() => setToast(null)} className="text-red-300 hover:text-red-100 shrink-0">×</button>
+        </div>
+      )}
     </div>
   );
 }

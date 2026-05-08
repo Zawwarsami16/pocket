@@ -8,6 +8,11 @@ export interface OAICompatConfig {
   filterModel?: (m: any) => boolean;
 }
 
+const REASONING_RE = /(^|\/)(gpt-5|o[1-9]|gpt-o[1-9])(-|$)/i;
+function isReasoningModel(id: string): boolean {
+  return REASONING_RE.test(id);
+}
+
 function turnToContent(t: ChatTurn) {
   const parts: any[] = [];
   for (const p of t.parts) {
@@ -57,14 +62,17 @@ export async function* chatOAI(
     messages.push({ role: t.role, content: turnToContent(t) });
   }
 
-  const body = {
+  const reasoning = isReasoningModel(req.modelId);
+  const body: Record<string, unknown> = {
     model: req.modelId,
     messages,
     stream: true,
-    temperature: req.temperature ?? 0.7,
-    max_tokens: req.maxTokens ?? 4096,
     stream_options: { include_usage: true }
   };
+  if (!reasoning && req.temperature !== undefined) body.temperature = req.temperature;
+  if (req.maxTokens !== undefined) {
+    body[reasoning ? 'max_completion_tokens' : 'max_tokens'] = req.maxTokens;
+  }
 
   const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
     method: 'POST',
