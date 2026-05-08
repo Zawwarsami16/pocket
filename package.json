@@ -1,0 +1,32 @@
+{
+  "name": "pocket",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Browser-only AI chat. Paste any key, models auto-detect, everything stays on your device.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dexie": "^4.4.2",
+    "dexie-react-hooks": "^4.4.0",
+    "dompurify": "^3.4.2",
+    "highlight.js": "^11.11.1",
+    "marked": "^18.0.3",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.14",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.2"
+  }
+}
