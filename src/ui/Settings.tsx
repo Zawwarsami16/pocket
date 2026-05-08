@@ -3,7 +3,8 @@ import { PROVIDERS, detectProvider, getProvider } from '../providers/registry';
 import { getKeys, setKey, removeKey, getActive, setActive, getSetting, setSetting } from '../db/keystore';
 import type { ModelInfo } from '../providers/types';
 import { listFacts, deleteFact } from '../db/facts';
-import { clearAll } from '../db/sessions';
+import { clearAll, listSessions } from '../db/sessions';
+import { db, type Session } from '../db/schema';
 import { Eye, EyeOff, X } from './icons';
 import type { CompressMode } from '../ai/compress';
 
@@ -14,7 +15,7 @@ interface Props {
 }
 
 export function Settings({ open, onClose, onApply }: Props) {
-  const [tab, setTab] = useState<'keys' | 'memory' | 'tokens' | 'data'>('keys');
+  const [tab, setTab] = useState<'keys' | 'memory' | 'threads' | 'tokens' | 'data'>('keys');
   const [pasteKey, setPasteKey] = useState('');
   const [pasteBaseUrl, setPasteBaseUrl] = useState('');
   const [pickedProviderId, setPickedProviderId] = useState<string | null>(null);
@@ -26,25 +27,37 @@ export function Settings({ open, onClose, onApply }: Props) {
   const [compressMode, setCompressMode] = useState<CompressMode>('off');
   const [cacheSystem, setCacheSystem] = useState(true);
   const [keepLast, setKeepLast] = useState(16);
+  const [crossSession, setCrossSession] = useState(true);
   const [facts, setFacts] = useState<any[]>([]);
   const [filter, setFilter] = useState('');
+  const [allSessions, setAllSessions] = useState<Session[]>([]);
+  const [sessionCounts, setSessionCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!open) return;
     (async () => {
-      const [k, a, cm, cs, kl] = await Promise.all([
+      const [k, a, cm, cs, kl, xs] = await Promise.all([
         getKeys(),
         getActive(),
         getSetting<CompressMode>('compressMode', 'off'),
         getSetting<boolean>('cacheSystem', true),
-        getSetting<number>('keepLast', 16)
+        getSetting<number>('keepLast', 16),
+        getSetting<boolean>('crossSession', true)
       ]);
       setKeys(k);
       setActiveLocal(a);
       setCompressMode(cm);
       setCacheSystem(cs);
       setKeepLast(kl);
+      setCrossSession(xs);
       setFacts(await listFacts());
+      const ss = await listSessions();
+      setAllSessions(ss);
+      const counts: Record<string, number> = {};
+      for (const s of ss) {
+        counts[s.id] = await db.messages.where('sessionId').equals(s.id).count();
+      }
+      setSessionCounts(counts);
       for (const e of k) {
         const provider = getProvider(e.providerId);
         if (!provider) continue;
@@ -99,7 +112,7 @@ export function Settings({ open, onClose, onApply }: Props) {
           <button onClick={onClose} className="p-1.5 rounded hover:bg-ink-800 text-ink-300"><X className="w-4 h-4" /></button>
         </div>
         <div className="flex border-b border-ink-800 px-3 text-sm">
-          {(['keys', 'memory', 'tokens', 'data'] as const).map((t) => (
+          {(['keys', 'memory', 'threads', 'tokens', 'data'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-3 py-2 capitalize border-b-2 transition-colors ${tab === t ? 'border-gold-500 text-ink-100' : 'border-transparent text-ink-400 hover:text-ink-200'}`}>
               {t}
@@ -240,6 +253,33 @@ export function Settings({ open, onClose, onApply }: Props) {
                       className="opacity-0 group-hover:opacity-100 text-ink-400 hover:text-red-400">
                       <X className="w-4 h-4" />
                     </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === 'threads' && (
+            <div className="space-y-3">
+              <div className="text-xs text-ink-400">
+                Cross-session memory: when you message any model, Pocket scans every chat in this browser for relevant snippets and includes them as context. So whichever provider/model you switch to, it walks in knowing what you've talked about before.
+              </div>
+              <Field label="Cross-session recall" hint="Pull relevant snippets from other chats into the system prompt every turn.">
+                <input type="checkbox" checked={crossSession}
+                  onChange={async (e) => { setCrossSession(e.target.checked); await setSetting('crossSession', e.target.checked); }}
+                  className="w-4 h-4 accent-gold-500" />
+              </Field>
+              <div className="text-xs uppercase tracking-wider text-ink-400 pt-2">All chats stored locally</div>
+              <div className="space-y-1 max-h-80 overflow-y-auto">
+                {allSessions.length === 0 && <div className="text-sm text-ink-500 italic">No chats yet.</div>}
+                {allSessions.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between px-3 py-2 bg-ink-950 border border-ink-800 rounded-lg text-sm">
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate">{s.title}</div>
+                      <div className="text-[10px] text-ink-500 mt-0.5">
+                        {sessionCounts[s.id] || 0} msg · {s.providerId}/{s.modelId.slice(0, 30)} · {new Date(s.updatedAt).toLocaleDateString()}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -19,6 +19,7 @@ export default function App() {
   const [compressMode, setCompressMode] = useState<CompressMode>('off');
   const [cacheSystem, setCacheSystem] = useState(true);
   const [keepLast, setKeepLast] = useState(16);
+  const [crossSession, setCrossSession] = useState(true);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -36,6 +37,7 @@ export default function App() {
       setCompressMode(await getSetting<CompressMode>('compressMode', 'off'));
       setCacheSystem(await getSetting<boolean>('cacheSystem', true));
       setKeepLast(await getSetting<number>('keepLast', 16));
+      setCrossSession(await getSetting<boolean>('crossSession', true));
       const sessions = await db.sessions.orderBy('updatedAt').reverse().toArray();
       if (sessions[0]) setActiveId(sessions[0].id);
       else if (!a.providerId) setSettingsOpen(true);
@@ -61,6 +63,7 @@ export default function App() {
       compressMode,
       cacheSystem,
       keepLast,
+      crossSessionRecall: crossSession,
       signal: abortRef.current.signal
     });
   }

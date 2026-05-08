@@ -87,7 +87,12 @@ export async function* chatOAI(
 
   if (!res.ok) {
     const errText = await res.text();
-    yield { type: 'error', error: `${res.status}: ${errText.slice(0, 400)}` };
+    let pretty = errText.slice(0, 400);
+    try {
+      const j = JSON.parse(errText);
+      pretty = j.error?.message || j.error?.code || j.message || pretty;
+    } catch {}
+    yield { type: 'error', error: `${res.status}: ${pretty}` };
     return;
   }
 

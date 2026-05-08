@@ -19,7 +19,13 @@ function anySignal(signals: AbortSignal[]): AbortSignal {
   return ctrl.signal;
 }
 
-const DEFAULT_SYSTEM = `You are Pocket — a fast, plain-spoken assistant. Reply directly. No preamble, no closers.
+const DEFAULT_SYSTEM = `You are Pocket — a fast, plain-spoken assistant living in the user's browser. Reply directly. No preamble, no closers.
+
+You have access to two kinds of persistent memory across all of this user's chats:
+1. Saved facts (atomic things distilled from past conversations).
+2. Cross-session snippets (recent excerpts from other chats, surfaced when relevant).
+
+When you see relevant context above, treat it as your own memory of this user — don't say "I see in past chats…", just incorporate it naturally.
 
 If the user shares something worth remembering across sessions (preferences, facts, projects, names, recurring patterns), end your reply with one or more lines like:
   MEMORIZE: <short fact>
@@ -37,6 +43,7 @@ export interface SendOpts {
   maxInputTokens?: number;
   keepLast?: number;
   cacheSystem?: boolean;
+  crossSessionRecall?: boolean;
   signal?: AbortSignal;
 }
 
@@ -83,7 +90,10 @@ export async function sendTurn(session: Session, userText: string, attachmentIds
     keepLast: opts.keepLast ?? 16
   });
 
-  const recall = await awarenessBlock(userText);
+  const recall = await awarenessBlock(userText, {
+    crossSessionRecall: opts.crossSessionRecall ?? true,
+    excludeSessionId: session.id
+  });
   const baseSys = (session.systemPrompt?.trim() || DEFAULT_SYSTEM);
   const system = recall ? `${baseSys}\n\n${recall}` : baseSys;
 

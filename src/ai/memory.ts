@@ -1,4 +1,5 @@
 import { rememberFact, recallFacts, harvestMemorize } from '../db/facts';
+import { recallAcrossSessions, formatRecallBlock } from './recall';
 
 export async function harvestAndStore(text: string, sessionId?: string): Promise<{ cleaned: string; saved: number }> {
   const { cleaned, facts } = harvestMemorize(text);
@@ -10,9 +11,29 @@ export async function harvestAndStore(text: string, sessionId?: string): Promise
   return { cleaned, saved };
 }
 
-export async function awarenessBlock(query: string): Promise<string | undefined> {
+export interface AwarenessOpts {
+  crossSessionRecall?: boolean;
+  excludeSessionId?: string;
+}
+
+export async function awarenessBlock(query: string, opts: AwarenessOpts = {}): Promise<string | undefined> {
+  const parts: string[] = [];
+
   const facts = await recallFacts(query, 8);
-  if (!facts.length) return undefined;
-  const lines = facts.map((f) => `- ${f.text}`);
-  return `What you remember about this user (from past chats):\n${lines.join('\n')}`;
+  if (facts.length) {
+    const lines = facts.map((f) => `- ${f.text}`);
+    parts.push(`What you remember about this user (saved facts):\n${lines.join('\n')}`);
+  }
+
+  if (opts.crossSessionRecall !== false) {
+    const snippets = await recallAcrossSessions(query, {
+      excludeSessionId: opts.excludeSessionId,
+      maxSnippets: 5,
+      perSnippetChars: 360
+    });
+    const block = formatRecallBlock(snippets);
+    if (block) parts.push(block);
+  }
+
+  return parts.length ? parts.join('\n\n') : undefined;
 }

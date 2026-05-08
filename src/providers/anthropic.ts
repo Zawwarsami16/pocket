@@ -65,14 +65,14 @@ export const anthropic: Provider = {
           : req.system)
       : undefined;
 
-    const body = {
+    const body: Record<string, unknown> = {
       model: req.modelId,
-      max_tokens: req.maxTokens ?? 4096,
-      temperature: req.temperature ?? 0.7,
+      max_tokens: req.maxTokens ?? 8192,
       stream: true,
       ...(system ? { system } : {}),
       messages
     };
+    if (req.temperature !== undefined) body.temperature = req.temperature;
 
     const res = await fetch(`${baseUrl || DEFAULT_BASE}/v1/messages`, {
       method: 'POST',
@@ -88,24 +88,47 @@ export const anthropic: Provider = {
 
     if (!res.ok) {
       const errText = await res.text();
-      yield { type: 'error', error: `Anthropic ${res.status}: ${errText.slice(0, 400)}` };
+      let pretty = errText.slice(0, 400);
+      try {
+        const j = JSON.parse(errText);
+        pretty = j.error?.message || j.message || pretty;
+      } catch {}
+      yield { type: 'error', error: `Anthropic ${res.status}: ${pretty}` };
       return;
     }
 
     let inTok = 0, outTok = 0;
+    let stopReason: string | undefined;
     for await (const ev of sseEvents(res, signal)) {
+      if (ev.event === 'ping') {
+        yield { type: 'delta', text: '' };
+        continue;
+      }
       if (!ev.data) continue;
-      if (ev.data === '[DONE]') break;
       try {
         const j = JSON.parse(ev.data);
-        if (j.type === 'content_block_delta' && j.delta?.type === 'text_delta') {
-          yield { type: 'delta', text: j.delta.text };
+        if (j.type === 'content_block_delta') {
+          if (j.delta?.type === 'text_delta') {
+            yield { type: 'delta', text: j.delta.text };
+          } else if (j.delta?.type === 'thinking_delta' || j.delta?.type === 'input_json_delta') {
+            yield { type: 'delta', text: '' };
+          }
         } else if (j.type === 'message_start' && j.message?.usage) {
           inTok = j.message.usage.input_tokens || 0;
-        } else if (j.type === 'message_delta' && j.usage) {
-          outTok = j.usage.output_tokens || 0;
+          yield { type: 'delta', text: '' };
+        } else if (j.type === 'message_delta') {
+          if (j.usage?.output_tokens) outTok = j.usage.output_tokens;
+          if (j.delta?.stop_reason) stopReason = j.delta.stop_reason;
+        } else if (j.type === 'error') {
+          const msg = j.error?.message || JSON.stringify(j.error);
+          yield { type: 'error', error: `Anthropic stream error: ${msg}` };
+          return;
         }
       } catch {}
+    }
+    if (stopReason && stopReason !== 'end_turn' && stopReason !== 'stop_sequence' && stopReason !== 'max_tokens') {
+      yield { type: 'error', error: `Stopped: ${stopReason}` };
+      return;
     }
     yield { type: 'usage', inTokens: inTok, outTokens: outTok };
     yield { type: 'done' };
