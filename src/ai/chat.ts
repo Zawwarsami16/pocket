@@ -7,6 +7,8 @@ import { compress, type CompressMode } from './compress';
 import { applyWindow } from './window';
 import { harvestAndStore, awarenessBlock } from './memory';
 import { estimateMessagesTokens } from './tokens';
+import { getPresence } from './presence';
+import { snapshotEntity, composeAwarenessForPrompt } from './entity';
 import type { Session } from '../db/schema';
 
 function anySignal(signals: AbortSignal[]): AbortSignal {
@@ -19,17 +21,6 @@ function anySignal(signals: AbortSignal[]): AbortSignal {
   return ctrl.signal;
 }
 
-const DEFAULT_SYSTEM = `You are Pocket — a fast, plain-spoken assistant living in the user's browser. Reply directly. No preamble, no closers.
-
-You have access to two kinds of persistent memory across all of this user's chats:
-1. Saved facts (atomic things distilled from past conversations).
-2. Cross-session snippets (recent excerpts from other chats, surfaced when relevant).
-
-When you see relevant context above, treat it as your own memory of this user — don't say "I see in past chats…", just incorporate it naturally.
-
-If the user shares something worth remembering across sessions (preferences, facts, projects, names, recurring patterns), end your reply with one or more lines like:
-  MEMORIZE: <short fact>
-These lines are stripped from the user-visible reply and saved to a local fact store.`;
 
 export interface ChatHandlers {
   onDelta?: (text: string) => void;
@@ -90,12 +81,19 @@ export async function sendTurn(session: Session, userText: string, attachmentIds
     keepLast: opts.keepLast ?? 16
   });
 
-  const recall = await awarenessBlock(userText, {
-    crossSessionRecall: opts.crossSessionRecall ?? true,
-    excludeSessionId: session.id
-  });
-  const baseSys = (session.systemPrompt?.trim() || DEFAULT_SYSTEM);
-  const system = recall ? `${baseSys}\n\n${recall}` : baseSys;
+  const [presence, entitySnap, recall] = await Promise.all([
+    getPresence(),
+    snapshotEntity(session.id),
+    awarenessBlock(userText, {
+      crossSessionRecall: opts.crossSessionRecall ?? true,
+      excludeSessionId: session.id
+    })
+  ]);
+  const entityBlock = composeAwarenessForPrompt(entitySnap);
+  const baseSys = session.systemPrompt?.trim() || presence;
+  const parts = [baseSys, entityBlock];
+  if (recall) parts.push(recall);
+  const system = parts.join('\n\n');
 
   const inputEst = estimateMessagesTokens(windowed.messages.map((t) => ({ role: t.role, content: t.parts.map((p) => p.text || '').join(' ') })));
 

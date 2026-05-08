@@ -7,6 +7,7 @@ import { clearAll, listSessions } from '../db/sessions';
 import { db, type Session } from '../db/schema';
 import { Eye, EyeOff, X } from './icons';
 import type { CompressMode } from '../ai/compress';
+import { getPresence, setPresence, DEFAULT_PRESENCE } from '../ai/presence';
 
 interface Props {
   open: boolean;
@@ -15,7 +16,9 @@ interface Props {
 }
 
 export function Settings({ open, onClose, onApply }: Props) {
-  const [tab, setTab] = useState<'keys' | 'memory' | 'threads' | 'tokens' | 'data'>('keys');
+  const [tab, setTab] = useState<'keys' | 'presence' | 'memory' | 'threads' | 'tokens' | 'data'>('keys');
+  const [presence, setPresenceText] = useState<string>(DEFAULT_PRESENCE);
+  const [presenceDirty, setPresenceDirty] = useState(false);
   const [pasteKey, setPasteKey] = useState('');
   const [pasteBaseUrl, setPasteBaseUrl] = useState('');
   const [pickedProviderId, setPickedProviderId] = useState<string | null>(null);
@@ -50,6 +53,8 @@ export function Settings({ open, onClose, onApply }: Props) {
       setCacheSystem(cs);
       setKeepLast(kl);
       setCrossSession(xs);
+      setPresenceText(await getPresence());
+      setPresenceDirty(false);
       setFacts(await listFacts());
       const ss = await listSessions();
       setAllSessions(ss);
@@ -112,7 +117,7 @@ export function Settings({ open, onClose, onApply }: Props) {
           <button onClick={onClose} className="p-1.5 rounded hover:bg-ink-800 text-ink-300"><X className="w-4 h-4" /></button>
         </div>
         <div className="flex border-b border-ink-800 px-3 text-sm">
-          {(['keys', 'memory', 'threads', 'tokens', 'data'] as const).map((t) => (
+          {(['keys', 'presence', 'memory', 'threads', 'tokens', 'data'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-3 py-2 capitalize border-b-2 transition-colors ${tab === t ? 'border-gold-500 text-ink-100' : 'border-transparent text-ink-400 hover:text-ink-200'}`}>
               {t}
@@ -255,6 +260,34 @@ export function Settings({ open, onClose, onApply }: Props) {
                     </button>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {tab === 'presence' && (
+            <div className="space-y-3">
+              <div className="text-xs text-ink-400">
+                Presence is how Pocket carries itself — its posture, voice, and continuity rules across every model you plug in.
+                It's what gets sent first in every system prompt, before the live awareness block and before recalled memory.
+              </div>
+              <textarea
+                value={presence}
+                onChange={(e) => { setPresenceText(e.target.value); setPresenceDirty(true); }}
+                rows={20}
+                className="w-full bg-ink-950 border border-ink-700 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-ink-600 leading-relaxed"
+              />
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => { setPresenceText(DEFAULT_PRESENCE); setPresenceDirty(true); }}
+                  className="text-xs text-ink-400 hover:text-ink-200">
+                  reset to default
+                </button>
+                <button
+                  onClick={async () => { await setPresence(presence); setPresenceDirty(false); }}
+                  disabled={!presenceDirty}
+                  className="px-3 py-1.5 rounded-lg bg-gold-500 text-ink-950 disabled:opacity-30 text-xs font-medium hover:bg-gold-400 transition-colors">
+                  {presenceDirty ? 'save presence' : 'saved'}
+                </button>
               </div>
             </div>
           )}

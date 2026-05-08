@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { Thread } from './Thread';
 import { Composer } from './Composer';
 import { Settings } from './Settings';
+import { AwarenessHud } from './AwarenessHud';
 import { getActive, getSetting } from '../db/keystore';
 import { getProvider } from '../providers/registry';
 import { sendTurn } from '../ai/chat';
@@ -22,6 +23,7 @@ export default function App() {
   const [crossSession, setCrossSession] = useState(true);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [lastUserText, setLastUserText] = useState<string>('');
   const abortRef = useRef<AbortController | null>(null);
 
   const session = useLiveQuery(async () => {
@@ -49,6 +51,7 @@ export default function App() {
     const provider = getProvider(session.providerId);
     if (!provider) { setSettingsOpen(true); return; }
     setBusy(true);
+    setLastUserText(text);
     abortRef.current = new AbortController();
 
     if (session.title === 'New chat') {
@@ -92,6 +95,7 @@ export default function App() {
               <div className="truncate font-medium">{session.title}</div>
               <ModelChip session={session} onClick={() => setSettingsOpen(true)} />
             </header>
+            <AwarenessHud sessionId={session.id} lastUserText={lastUserText} />
             <Thread sessionId={session.id} />
             <Composer sessionId={session.id} busy={busy} onSend={send} onStop={stop} compressMode={compressMode} />
           </>
