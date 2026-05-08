@@ -13,10 +13,11 @@ export async function* sseLines(res: Response, signal?: AbortSignal): AsyncGener
       while ((idx = buf.indexOf('\n')) !== -1) {
         const line = buf.slice(0, idx).replace(/\r$/, '');
         buf = buf.slice(idx + 1);
-        if (line) yield line;
+        yield line;
       }
     }
-    if (buf.trim()) yield buf.trim();
+    if (buf.length) yield buf.replace(/\r$/, '');
+    yield '';
   } finally {
     try { reader.releaseLock(); } catch {}
   }
@@ -27,7 +28,7 @@ export function parseSseEvent(lines: string[]): { event?: string; data?: string 
   const dataParts: string[] = [];
   for (const ln of lines) {
     if (ln.startsWith('event:')) event = ln.slice(6).trim();
-    else if (ln.startsWith('data:')) dataParts.push(ln.slice(5).trim());
+    else if (ln.startsWith('data:')) dataParts.push(ln.slice(5).replace(/^ /, ''));
   }
   return { event, data: dataParts.length ? dataParts.join('\n') : undefined };
 }
@@ -42,6 +43,7 @@ export async function* sseEvents(res: Response, signal?: AbortSignal): AsyncGene
       }
       continue;
     }
+    if (line.startsWith(':')) continue;
     block.push(line);
   }
   if (block.length) yield parseSseEvent(block);
