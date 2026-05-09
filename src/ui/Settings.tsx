@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PROVIDERS, detectProvider, getProvider } from '../providers/registry';
+import { fetchManifest, type ZhubManifest } from '../providers/zhub';
 import { getKeys, getActive, setActive, getSetting, setSetting } from '../db/keystore';
 import { setKeyEncrypted as setKey, removeKeyEncrypted as removeKey, isVaultEnabled, setupVault, disableVault, lockVault } from '../db/vault';
 import { getStoredTheme, setStoredTheme, type Theme } from './theme';
@@ -173,13 +174,21 @@ export function Settings({ open, onClose, onApply }: Props) {
                     </span>
                   ) : <span className="text-[var(--fg-500)]">Provider auto-detected from key prefix.</span>}
                 </div>
-                {(inferredProvider?.id === 'custom' || pickedProviderId === 'custom') && (
+                {(inferredProvider?.id === 'custom' || pickedProviderId === 'custom' ||
+                  inferredProvider?.id === 'zhub'   || pickedProviderId === 'zhub') && (
                   <input
-                    placeholder="Base URL for custom provider (e.g. http://127.0.0.1:7780/v1)"
+                    placeholder={
+                      inferredProvider?.id === 'zhub' || pickedProviderId === 'zhub'
+                        ? 'Base URL — must include /v1 (e.g. https://hub.example.com/zai/v1)'
+                        : 'Base URL for custom provider (e.g. http://127.0.0.1:7780/v1)'
+                    }
                     value={pasteBaseUrl}
                     onChange={(e) => setPasteBaseUrl(e.target.value)}
                     className="w-full bg-[var(--bg-950)] border border-[var(--bg-700)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--bg-600)] font-mono"
                   />
+                )}
+                {(inferredProvider?.id === 'zhub' || pickedProviderId === 'zhub') && pasteBaseUrl.trim() && (
+                  <ZhubManifestPreview baseUrl={pasteBaseUrl.trim()} />
                 )}
                 {inferredProvider && (
                   <div className="text-xs text-[var(--fg-500)] italic">{inferredProvider.notes}</div>
@@ -423,6 +432,87 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
         {hint && <div className="text-[11px] text-[var(--fg-500)] mt-0.5">{hint}</div>}
       </div>
       <div>{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Live preview of a zhub publisher's manifest. Fetches /<name>/manifest.json
+ * (debounced) and renders name, description, capabilities, signed status, and
+ * connection count. Helps the operator confirm they pasted the right URL
+ * before adding the key.
+ */
+function ZhubManifestPreview({ baseUrl }: { baseUrl: string }) {
+  const [manifest, setManifest] = useState<ZhubManifest | null>(null);
+  const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading');
+  const lastReq = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      lastReq.current?.abort();
+      const ac = new AbortController();
+      lastReq.current = ac;
+      setState('loading');
+      fetchManifest(baseUrl, ac.signal).then((m) => {
+        if (ac.signal.aborted) return;
+        if (m) {
+          setManifest(m);
+          setState('ok');
+        } else {
+          setManifest(null);
+          setState('error');
+        }
+      });
+    }, 350);
+    return () => clearTimeout(t);
+  }, [baseUrl]);
+
+  if (state === 'loading') {
+    return <div className="text-xs text-[var(--fg-500)]">Fetching manifest…</div>;
+  }
+  if (state === 'error' || !manifest) {
+    return (
+      <div className="text-xs text-[var(--fg-500)]">
+        Couldn't fetch manifest from {baseUrl.replace(/\/v1\/?$/, '/manifest.json')}.
+        Check the URL or that the hub is reachable.
+      </div>
+    );
+  }
+  const caps = manifest.capabilities || [];
+  const connCount = (manifest.connections || []).length;
+  const signed = !!manifest.signature && !!manifest.public_key;
+  return (
+    <div className="text-xs border border-[var(--bg-800)] rounded-lg p-3 bg-[var(--bg-925)] space-y-1.5">
+      <div className="flex items-center gap-2">
+        <span className="font-semibold text-[var(--fg-100)]">{manifest.name}</span>
+        {signed ? (
+          <span className="px-1.5 py-0.5 rounded bg-emerald-900/30 text-emerald-300 text-[10px]">signed</span>
+        ) : (
+          <span className="px-1.5 py-0.5 rounded bg-[var(--bg-800)] text-[var(--fg-400)] text-[10px]">unsigned</span>
+        )}
+        {manifest.public ? (
+          <span className="px-1.5 py-0.5 rounded bg-[var(--gold)]/15 text-[var(--gold)] text-[10px]">public</span>
+        ) : null}
+      </div>
+      {manifest.description && (
+        <div className="text-[var(--fg-300)]">{manifest.description}</div>
+      )}
+      {manifest.operator && (
+        <div className="text-[var(--fg-500)]">operator: {manifest.operator}</div>
+      )}
+      {caps.length > 0 && (
+        <div className="text-[var(--fg-400)]">
+          capabilities: {caps.map((c) => c.name).join(', ')}
+        </div>
+      )}
+      <div className="text-[var(--fg-500)]">
+        {connCount > 0 ? `${connCount} connection(s) live` : 'no connections live'}
+      </div>
+      {signed && manifest.public_key && (
+        <div className="font-mono text-[10px] text-[var(--fg-600)] break-all">
+          public_key: {manifest.public_key.slice(0, 24)}…
+        </div>
+      )}
     </div>
   );
 }
