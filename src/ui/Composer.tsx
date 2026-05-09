@@ -14,6 +14,7 @@ interface Props {
 export function Composer({ sessionId, busy, onSend, onStop, compressMode }: Props) {
   const [text, setText] = useState('');
   const [pending, setPending] = useState<{ id: string; name: string; kind: string }[]>([]);
+  const [focused, setFocused] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -46,17 +47,18 @@ export function Composer({ sessionId, busy, onSend, onStop, compressMode }: Prop
 
   const compressed = compressMode !== 'off' ? compress(text, compressMode) : text;
   const savings = compressMode !== 'off' && text ? estimateSavings(text, compressed) : null;
+  const charCount = text.length;
 
   return (
-    <div className="border-t border-[var(--bg-800)] bg-[var(--bg-900)]/80 backdrop-blur px-3 pt-3 pb-3 pb-safe">
+    <div className="border-t border-[var(--bg-800)] glass-strong px-3 pt-3 pb-3 pb-safe">
       <div className="max-w-3xl mx-auto">
         {pending.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-2">
+          <div className="flex flex-wrap gap-1.5 mb-2 fade-in">
             {pending.map((p) => (
-              <div key={p.id} className="flex items-center gap-1 bg-[var(--bg-800)] px-2 py-1 rounded text-xs text-[var(--fg-200)]">
+              <div key={p.id} className="flex items-center gap-1.5 bg-[var(--bg-800)] border border-[var(--bg-750)] px-2.5 py-1 rounded-md text-xs text-[var(--fg-200)]">
                 <span className="text-[var(--gold)]">{p.kind === 'image' ? '🖼' : p.kind === 'pdf' ? '📄' : '📎'}</span>
                 <span className="truncate max-w-[180px]">{p.name}</span>
-                <button onClick={() => setPending((arr) => arr.filter((x) => x.id !== p.id))} className="text-[var(--fg-400)] hover:text-[var(--fg-100)]">
+                <button onClick={() => setPending((arr) => arr.filter((x) => x.id !== p.id))} className="text-[var(--fg-500)] hover:text-[var(--fg-100)] -mr-0.5">
                   <X className="w-3 h-3" />
                 </button>
               </div>
@@ -64,40 +66,56 @@ export function Composer({ sessionId, busy, onSend, onStop, compressMode }: Prop
           </div>
         )}
 
-        <div className="flex items-end gap-2 bg-[var(--bg-800)] rounded-2xl p-2 border border-[var(--bg-700)] focus-within:border-[var(--bg-600)] transition-colors">
-          <label className="p-2 rounded-full hover:bg-[var(--bg-700)] cursor-pointer text-[var(--fg-300)]" title="Attach file">
+        <div className={`flex items-end gap-2 bg-[var(--bg-850)] rounded-2xl p-1.5 border ${focused ? 'border-[var(--bg-650)] elev-2' : 'border-[var(--bg-750)]'}`} style={{ transition: 'border-color 160ms, box-shadow 160ms' }}>
+          <label className="p-2 rounded-full hover:bg-[var(--bg-800)] cursor-pointer text-[var(--fg-400)] hover:text-[var(--fg-100)]" title="Attach file">
             <Paperclip className="w-5 h-5" />
-            <input type="file" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
+            <input type="file" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }} />
           </label>
           <textarea
             ref={taRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 trySend();
               }
             }}
             placeholder="Message Pocket…"
-            className="flex-1 bg-transparent outline-none resize-none py-2 px-1 text-sm placeholder-[var(--fg-500)] max-h-[280px] text-[var(--fg-100)]"
+            className="flex-1 bg-transparent outline-none resize-none py-2 px-1 text-sm placeholder-[var(--fg-500)] max-h-[280px] text-[var(--fg-100)] leading-relaxed"
             rows={1}
           />
           {busy ? (
-            <button onClick={onStop} className="p-2 rounded-full bg-[var(--bg-700)] hover:bg-[var(--bg-600)] text-[var(--fg-100)]" title="Stop">
+            <button onClick={onStop} className="p-2 rounded-full bg-[var(--bg-700)] hover:bg-[var(--bg-650)] text-[var(--fg-100)] elev-1" title="Stop">
               <StopCircle className="w-5 h-5" />
             </button>
           ) : (
-            <button onClick={trySend} disabled={!text.trim() && !pending.length} className="p-2 rounded-full bg-[var(--gold)] hover:bg-[var(--gold-bright)] disabled:opacity-30 disabled:cursor-not-allowed text-[var(--bg-950)] transition-colors" title="Send (Enter)">
+            <button
+              onClick={trySend}
+              disabled={!text.trim() && !pending.length}
+              className="p-2 rounded-full bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold-deep)] hover:from-[var(--gold-bright)] hover:to-[var(--gold)] disabled:opacity-30 disabled:cursor-not-allowed text-[var(--bg-950)] elev-1"
+              title="Send (Enter)">
               <Send className="w-5 h-5" />
             </button>
           )}
         </div>
-        {savings && savings.pct > 0 && (
-          <div className="text-[10px] text-[var(--fg-500)] mt-1.5 text-right">
-            compress {compressMode}: -{savings.saved} chars (~{savings.pct}%)
+
+        <div className="flex items-center justify-between mt-1.5 px-1 text-[10px] text-[var(--fg-500)] min-h-[14px]">
+          <div className="flex items-center gap-3">
+            {focused && !text && (
+              <span className="fade-in">
+                <kbd className="px-1 py-px rounded bg-[var(--bg-800)] border border-[var(--bg-750)] font-mono mr-1">↵</kbd>send
+                <kbd className="px-1 py-px rounded bg-[var(--bg-800)] border border-[var(--bg-750)] font-mono ml-2 mr-1">⇧↵</kbd>newline
+              </span>
+            )}
+            {savings && savings.pct > 0 && (
+              <span className="text-[var(--gold-bright)]">compress {compressMode}: −{savings.pct}%</span>
+            )}
           </div>
-        )}
+          {charCount > 0 && <span className="font-mono">{charCount}</span>}
+        </div>
       </div>
     </div>
   );

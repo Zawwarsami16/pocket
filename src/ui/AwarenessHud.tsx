@@ -51,53 +51,68 @@ export function AwarenessHud({ sessionId, lastUserText }: Props) {
   ].filter(Boolean).join(' · ');
 
   return (
-    <div className="border-b border-[var(--bg-800)] bg-[var(--bg-900)]/40">
+    <div className="border-b border-[var(--bg-800)] glass">
       <button onClick={() => setOpen((v) => !v)}
-        className="w-full px-4 py-1.5 flex items-center gap-2 text-[11px] text-[var(--fg-400)] hover:text-[var(--fg-200)] transition-colors">
-        <span className={`w-1.5 h-1.5 rounded-full ${snap.online ? 'bg-emerald-500' : 'bg-amber-500'} ${open ? '' : 'animate-pulse'}`} />
-        <span className="truncate">{summary}</span>
-        <span className="ml-auto opacity-60">{open ? '−' : '+'}</span>
+        className="w-full px-4 py-1.5 flex items-center gap-2.5 text-[11px] text-[var(--fg-400)] hover:text-[var(--fg-200)]">
+        <span className="relative flex">
+          <span className={`w-1.5 h-1.5 rounded-full ${snap.online ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+          {snap.online && <span className="absolute inset-0 w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-glow" />}
+        </span>
+        <span className="truncate font-mono">{summary}</span>
+        <span className={`ml-auto text-[var(--fg-500)] transition-transform duration-200 ${open ? 'rotate-180' : ''}`} style={{ transitionTimingFunction: 'var(--ease-out-quart)' }}>
+          <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
       </button>
       {open && (
-        <div className="px-4 pb-3 pt-1 text-xs text-[var(--fg-300)] space-y-3 border-t border-[var(--bg-800)]/50">
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-[var(--fg-500)] mb-1">Awareness this turn</div>
-            <div className="text-[var(--fg-300)] leading-relaxed">
-              <div>posture: <span className="text-[var(--gold-bright)]">{snap.posture}</span></div>
+        <div className="px-4 pb-3 pt-1 text-xs text-[var(--fg-300)] space-y-3 border-t border-[var(--bg-800)]/60 fade-in-up">
+          <Section label="awareness this turn">
+            <div className="space-y-0.5">
+              <div>posture · <span className="text-[var(--gold-bright)]">{snap.posture}</span></div>
               {snap.currentSession && (
-                <div>this thread: "{snap.currentSession.title}" on <span className="font-mono text-[var(--fg-200)]">{snap.currentSession.modelId}</span> · {snap.currentSession.messages} msgs</div>
+                <div>this thread · "{snap.currentSession.title}" on <span className="font-mono text-[var(--fg-200)]">{snap.currentSession.modelId}</span> · {snap.currentSession.messages} msgs</div>
               )}
-              <div>{snap.totalMessages} total messages across {snap.totalChats} chats · {snap.totalFacts} facts remembered</div>
+              <div>{snap.totalMessages} total msgs · {snap.totalChats} chats · {snap.totalFacts} facts</div>
             </div>
-          </div>
+          </Section>
           {facts.length > 0 && (
-            <div>
-              <div className="text-[10px] uppercase tracking-wider text-[var(--fg-500)] mb-1">Top of mind right now</div>
+            <Section label="top of mind">
               <ul className="space-y-0.5">
                 {facts.map((f, i) => (
-                  <li key={i} className="text-[var(--fg-300)] truncate">· {f.text} <span className="text-[var(--fg-600)]">×{f.hits}</span></li>
+                  <li key={i} className="text-[var(--fg-300)] truncate flex items-baseline gap-2">
+                    <span className="text-[var(--gold-deep)] shrink-0">·</span>
+                    <span className="truncate flex-1">{f.text}</span>
+                    <span className="text-[var(--fg-600)] text-[9px] shrink-0">×{f.hits}</span>
+                  </li>
                 ))}
               </ul>
-            </div>
+            </Section>
           )}
           {snippets.length > 0 && (
-            <div>
-              <div className="text-[10px] uppercase tracking-wider text-[var(--fg-500)] mb-1">Pulling from past chats</div>
-              <ul className="space-y-1">
+            <Section label="pulling from past chats">
+              <ul className="space-y-1.5">
                 {snippets.map((s, i) => (
-                  <li key={i}>
-                    <div className="text-[var(--gold-bright)]/80 text-[10px]">"{s.title}"</div>
+                  <li key={i} className="border-l-2 border-[var(--gold-deep)] pl-2.5">
+                    <div className="text-[var(--gold-bright)]/80 text-[10px] mb-0.5">"{s.title}"</div>
                     <div className="text-[var(--fg-400)] truncate">{s.preview}</div>
                   </li>
                 ))}
               </ul>
-            </div>
+            </Section>
           )}
           {!snippets.length && !facts.length && (
-            <div className="text-[var(--fg-500)] italic">Nothing matched the current thread yet — keep talking, memory grows.</div>
+            <div className="text-[var(--fg-500)] italic text-[11px]">Nothing matched this thread yet — keep talking, memory grows.</div>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-[9px] uppercase tracking-[0.1em] text-[var(--fg-500)] font-medium mb-1">{label}</div>
+      {children}
     </div>
   );
 }

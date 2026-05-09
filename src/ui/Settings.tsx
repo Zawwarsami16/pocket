@@ -117,16 +117,20 @@ export function Settings({ open, onClose, onApply }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 grid place-items-center p-4">
-      <div className="bg-[var(--bg-900)] border border-[var(--bg-700)] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--bg-800)]">
-          <div className="font-semibold">Settings</div>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 grid place-items-center p-4 fade-in" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()}
+        className="bg-[var(--bg-900)] border border-[var(--bg-750)] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden elev-4 fade-in-up">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--bg-800)]">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-md bg-gradient-to-br from-[var(--bg-800)] to-[var(--bg-925)] grid place-items-center text-[var(--gold)] text-xs font-semibold ring-soft">P</span>
+            <span className="font-semibold tracking-tight">Settings</span>
+          </div>
           <button onClick={onClose} className="p-1.5 rounded hover:bg-[var(--bg-800)] text-[var(--fg-300)]"><X className="w-4 h-4" /></button>
         </div>
-        <div className="flex border-b border-[var(--bg-800)] px-3 text-sm">
+        <div className="flex border-b border-[var(--bg-800)] px-3 text-sm sticky top-0 glass-strong z-10 overflow-x-auto">
           {(['keys', 'presence', 'memory', 'threads', 'tokens', 'appearance', 'data'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-3 py-2 capitalize border-b-2 transition-colors ${tab === t ? 'border-[var(--gold)] text-[var(--fg-100)]' : 'border-transparent text-[var(--fg-400)] hover:text-[var(--fg-200)]'}`}>
+              className={`px-3 py-2.5 capitalize border-b-2 -mb-px text-[13px] whitespace-nowrap ${tab === t ? 'border-[var(--gold)] text-[var(--fg-100)] font-medium' : 'border-transparent text-[var(--fg-400)] hover:text-[var(--fg-200)]'}`}>
               {t}
             </button>
           ))}

@@ -85,11 +85,11 @@ export function CommandPalette({ open, onClose, onSelectSession, onOpenSettings,
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-start pt-[10vh] px-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-start pt-[10vh] px-4 bg-black/60 backdrop-blur-sm fade-in" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-xl rounded-xl border border-[var(--bg-700)] bg-[var(--bg-900)] shadow-2xl overflow-hidden fade-in-up">
+        className="w-full max-w-xl rounded-xl border border-[var(--bg-750)] bg-[var(--bg-900)] elev-4 overflow-hidden fade-in-up">
         <div className="flex items-center px-4 py-3 border-b border-[var(--bg-800)]">
-          <span className="text-[var(--gold)] text-sm">⌘</span>
+          <svg viewBox="0 0 24 24" className="w-4 h-4 text-[var(--fg-500)] shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
           <input
             ref={inputRef}
             value={q}
@@ -106,7 +106,7 @@ export function CommandPalette({ open, onClose, onSelectSession, onOpenSettings,
               } else if (e.key === 'Escape') onClose();
             }}
             placeholder="Search chats, messages, facts… or pick an action"
-            className="flex-1 bg-transparent outline-none px-2 text-sm placeholder-[var(--fg-500)]"
+            className="flex-1 bg-transparent outline-none px-3 text-sm placeholder-[var(--fg-500)] text-[var(--fg-100)]"
           />
           <button onClick={onClose} className="text-[var(--fg-400)] hover:text-[var(--fg-100)]"><X className="w-4 h-4" /></button>
         </div>
@@ -120,14 +120,15 @@ export function CommandPalette({ open, onClose, onSelectSession, onOpenSettings,
                 if (r.action) { r.action(); onClose(); }
                 else if (r.sessionId) { onSelectSession(r.sessionId); onClose(); }
               }}
-              className={`w-full text-left px-4 py-2.5 flex items-center gap-3 ${i === cursor ? 'bg-[var(--bg-800)]' : ''}`}>
-              <span className={`text-[10px] uppercase tracking-wider w-16 shrink-0 ${
-                r.kind === 'action' ? 'text-[var(--gold)]' :
+              className={`w-full text-left px-4 py-2.5 flex items-center gap-3 relative ${i === cursor ? 'bg-[var(--bg-850)]' : ''}`}>
+              {i === cursor && <span className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-[var(--gold)]" />}
+              <span className={`text-[9px] uppercase tracking-[0.1em] font-medium w-16 shrink-0 ${
+                r.kind === 'action' ? 'text-[var(--gold-bright)]' :
                 r.kind === 'session' ? 'text-emerald-400' :
                 r.kind === 'fact' ? 'text-purple-400' : 'text-[var(--fg-500)]'
               }`}>{r.kind}</span>
-              <span className="flex-1 truncate text-sm">{r.label}</span>
-              {r.hint && <span className="text-[10px] text-[var(--fg-500)] shrink-0">{r.hint}</span>}
+              <span className="flex-1 truncate text-sm text-[var(--fg-100)]">{r.label}</span>
+              {r.hint && <span className="text-[10px] text-[var(--fg-500)] shrink-0 truncate max-w-[40%]">{r.hint}</span>}
             </button>
           ))}
         </div>
