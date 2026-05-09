@@ -27,6 +27,7 @@ export interface ChatHandlers {
   onUsage?: (inTok: number, outTok: number) => void;
   onError?: (err: string) => void;
   onDone?: () => void;
+  onMemorySaved?: (count: number) => void;
 }
 
 export interface SendOpts {
@@ -159,12 +160,13 @@ export async function sendTurn(session: Session, userText: string, attachmentIds
   if (stalledTimer) clearTimeout(stalledTimer);
 
   if (!errored) {
-    const { cleaned } = await harvestAndStore(buffer, session.id);
+    const { cleaned, saved } = await harvestAndStore(buffer, session.id);
     await updateMessage(placeholder.id, {
       content: cleaned,
       tokensIn: inTok || inputEst,
       tokensOut: outTok
     });
+    if (saved > 0) handlers.onMemorySaved?.(saved);
   }
 
   handlers.onDone?.();

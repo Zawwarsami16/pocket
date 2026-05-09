@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { PROVIDERS, detectProvider, getProvider } from '../providers/registry';
-import { getKeys, setKey, removeKey, getActive, setActive, getSetting, setSetting } from '../db/keystore';
+import { getKeys, getActive, setActive, getSetting, setSetting } from '../db/keystore';
+import { setKeyEncrypted as setKey, removeKeyEncrypted as removeKey, isVaultEnabled, setupVault, disableVault, lockVault } from '../db/vault';
+import { getStoredTheme, setStoredTheme, type Theme } from './theme';
 import type { ModelInfo } from '../providers/types';
 import { listFacts, deleteFact } from '../db/facts';
 import { clearAll, listSessions } from '../db/sessions';
@@ -16,7 +18,10 @@ interface Props {
 }
 
 export function Settings({ open, onClose, onApply }: Props) {
-  const [tab, setTab] = useState<'keys' | 'presence' | 'memory' | 'threads' | 'tokens' | 'data'>('keys');
+  const [tab, setTab] = useState<'keys' | 'presence' | 'memory' | 'threads' | 'tokens' | 'appearance' | 'data'>('keys');
+  const [theme, setThemeLocal] = useState<Theme>('dark');
+  const [vaultOn, setVaultOn] = useState(false);
+  const [newPass, setNewPass] = useState('');
   const [presence, setPresenceText] = useState<string>(DEFAULT_PRESENCE);
   const [presenceDirty, setPresenceDirty] = useState(false);
   const [pasteKey, setPasteKey] = useState('');
@@ -53,6 +58,8 @@ export function Settings({ open, onClose, onApply }: Props) {
       setCacheSystem(cs);
       setKeepLast(kl);
       setCrossSession(xs);
+      setThemeLocal(getStoredTheme());
+      setVaultOn(await isVaultEnabled());
       setPresenceText(await getPresence());
       setPresenceDirty(false);
       setFacts(await listFacts());
@@ -111,15 +118,15 @@ export function Settings({ open, onClose, onApply }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 grid place-items-center p-4">
-      <div className="bg-ink-900 border border-ink-700 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-ink-800">
+      <div className="bg-[var(--bg-900)] border border-[var(--bg-700)] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--bg-800)]">
           <div className="font-semibold">Settings</div>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-ink-800 text-ink-300"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-[var(--bg-800)] text-[var(--fg-300)]"><X className="w-4 h-4" /></button>
         </div>
-        <div className="flex border-b border-ink-800 px-3 text-sm">
-          {(['keys', 'presence', 'memory', 'threads', 'tokens', 'data'] as const).map((t) => (
+        <div className="flex border-b border-[var(--bg-800)] px-3 text-sm">
+          {(['keys', 'presence', 'memory', 'threads', 'tokens', 'appearance', 'data'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-3 py-2 capitalize border-b-2 transition-colors ${tab === t ? 'border-gold-500 text-ink-100' : 'border-transparent text-ink-400 hover:text-ink-200'}`}>
+              className={`px-3 py-2 capitalize border-b-2 transition-colors ${tab === t ? 'border-[var(--gold)] text-[var(--fg-100)]' : 'border-transparent text-[var(--fg-400)] hover:text-[var(--fg-200)]'}`}>
               {t}
             </button>
           ))}
@@ -129,7 +136,7 @@ export function Settings({ open, onClose, onApply }: Props) {
           {tab === 'keys' && (
             <>
               <div className="space-y-2">
-                <div className="text-xs uppercase tracking-wider text-ink-400">Add a key</div>
+                <div className="text-xs uppercase tracking-wider text-[var(--fg-400)]">Add a key</div>
                 <div className="flex gap-2 items-stretch">
                   <div className="relative flex-1">
                     <input
@@ -137,53 +144,53 @@ export function Settings({ open, onClose, onApply }: Props) {
                       placeholder="Paste API key (sk-ant-…, sk-or-…, gsk_…, etc.)"
                       value={pasteKey}
                       onChange={(e) => setPasteKey(e.target.value)}
-                      className="w-full bg-ink-950 border border-ink-700 rounded-lg pl-3 pr-10 py-2 text-sm outline-none focus:border-ink-600 font-mono"
+                      className="w-full bg-[var(--bg-950)] border border-[var(--bg-700)] rounded-lg pl-3 pr-10 py-2 text-sm outline-none focus:border-[var(--bg-600)] font-mono"
                     />
-                    <button type="button" onClick={() => setShowKey((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-100 p-1">
+                    <button type="button" onClick={() => setShowKey((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--fg-400)] hover:text-[var(--fg-100)] p-1">
                       {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                   <button onClick={addKey} disabled={!pasteKey.trim() || !inferredProvider || !!loadingModels}
-                    className="px-4 rounded-lg bg-gold-500 hover:bg-gold-400 text-ink-950 disabled:opacity-30 text-sm font-medium transition-colors">
+                    className="px-4 rounded-lg bg-[var(--gold)] hover:bg-[var(--gold-bright)] text-[var(--bg-950)] disabled:opacity-30 text-sm font-medium transition-colors">
                     {loadingModels ? '…' : 'Add'}
                   </button>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   {detected ? (
-                    <span className="text-gold-500">Detected: <strong>{detected.label}</strong> · CORS {detected.corsStatus}</span>
+                    <span className="text-[var(--gold)]">Detected: <strong>{detected.label}</strong> · CORS {detected.corsStatus}</span>
                   ) : pasteKey.trim() ? (
-                    <span className="text-ink-400 flex items-center gap-1.5">
+                    <span className="text-[var(--fg-400)] flex items-center gap-1.5">
                       Couldn't auto-detect. Pick provider:
                       <select value={pickedProviderId || ''} onChange={(e) => setPickedProviderId(e.target.value || null)}
-                        className="bg-ink-950 border border-ink-700 rounded px-1 py-0.5">
+                        className="bg-[var(--bg-950)] border border-[var(--bg-700)] rounded px-1 py-0.5">
                         <option value="">—</option>
                         {PROVIDERS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
                       </select>
                     </span>
-                  ) : <span className="text-ink-500">Provider auto-detected from key prefix.</span>}
+                  ) : <span className="text-[var(--fg-500)]">Provider auto-detected from key prefix.</span>}
                 </div>
                 {(inferredProvider?.id === 'custom' || pickedProviderId === 'custom') && (
                   <input
                     placeholder="Base URL for custom provider (e.g. http://127.0.0.1:7780/v1)"
                     value={pasteBaseUrl}
                     onChange={(e) => setPasteBaseUrl(e.target.value)}
-                    className="w-full bg-ink-950 border border-ink-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-ink-600 font-mono"
+                    className="w-full bg-[var(--bg-950)] border border-[var(--bg-700)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--bg-600)] font-mono"
                   />
                 )}
                 {inferredProvider && (
-                  <div className="text-xs text-ink-500 italic">{inferredProvider.notes}</div>
+                  <div className="text-xs text-[var(--fg-500)] italic">{inferredProvider.notes}</div>
                 )}
               </div>
 
               <div>
-                <div className="text-xs uppercase tracking-wider text-ink-400 mb-2">Provider status</div>
+                <div className="text-xs uppercase tracking-wider text-[var(--fg-400)] mb-2">Provider status</div>
                 <div className="space-y-2">
                   {PROVIDERS.map((p) => {
                     const k = keys.find((x) => x.providerId === p.id);
                     const ms = models[p.id] || [];
                     const isActive = active.providerId === p.id;
                     return (
-                      <div key={p.id} className={`border rounded-lg ${isActive ? 'border-gold-600/40 bg-gold-500/[0.04]' : 'border-ink-800'}`}>
+                      <div key={p.id} className={`border rounded-lg ${isActive ? 'border-[var(--gold-deep)]/40 bg-[var(--gold)]/5' : 'border-[var(--bg-800)]'}`}>
                         <div className="px-3 py-2 flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className={`w-1.5 h-1.5 rounded-full ${
@@ -191,33 +198,33 @@ export function Settings({ open, onClose, onApply }: Props) {
                               p.corsStatus === 'partial' ? 'bg-amber-500' : 'bg-red-500'
                             }`} />
                             <span className="text-sm font-medium">{p.label}</span>
-                            <span className="text-[10px] uppercase text-ink-500">{p.corsStatus === 'blocked' ? 'CORS blocked' : p.corsStatus === 'partial' ? 'partial' : 'works'}</span>
+                            <span className="text-[10px] uppercase text-[var(--fg-500)]">{p.corsStatus === 'blocked' ? 'CORS blocked' : p.corsStatus === 'partial' ? 'partial' : 'works'}</span>
                           </div>
                           {k ? (
                             <div className="flex items-center gap-2">
-                              <span className="text-[10px] text-ink-500 font-mono">…{k.apiKey.slice(-6)}</span>
-                              <button onClick={() => dropKey(p.id)} className="text-xs text-ink-400 hover:text-red-400">remove</button>
+                              <span className="text-[10px] text-[var(--fg-500)] font-mono">…{k.apiKey.slice(-6)}</span>
+                              <button onClick={() => dropKey(p.id)} className="text-xs text-[var(--fg-400)] hover:text-red-400">remove</button>
                             </div>
                           ) : (
-                            <span className="text-xs text-ink-500">no key</span>
+                            <span className="text-xs text-[var(--fg-500)]">no key</span>
                           )}
                         </div>
                         {k && ms.length > 0 && (
                           <div className="px-3 pb-3">
-                            <div className="text-[10px] uppercase text-ink-500 mb-1">Models</div>
+                            <div className="text-[10px] uppercase text-[var(--fg-500)] mb-1">Models</div>
                             <div className="flex flex-wrap gap-1">
                               {ms.slice(0, 60).map((m) => (
                                 <button key={m.id}
                                   onClick={() => pickModel(p.id, m.id)}
                                   className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${
                                     isActive && active.modelId === m.id
-                                      ? 'border-gold-500 bg-gold-500/10 text-gold-400'
-                                      : 'border-ink-700 hover:border-ink-600 text-ink-300'
+                                      ? 'border-[var(--gold)] bg-[var(--gold)]/10 text-[var(--gold-bright)]'
+                                      : 'border-[var(--bg-700)] hover:border-[var(--bg-600)] text-[var(--fg-300)]'
                                   }`}>
                                   {m.label || m.id}
                                 </button>
                               ))}
-                              {ms.length > 60 && <span className="text-[10px] text-ink-500 self-center">+{ms.length - 60} more</span>}
+                              {ms.length > 60 && <span className="text-[10px] text-[var(--fg-500)] self-center">+{ms.length - 60} more</span>}
                             </div>
                           </div>
                         )}
@@ -234,7 +241,7 @@ export function Settings({ open, onClose, onApply }: Props) {
 
           {tab === 'memory' && (
             <div className="space-y-3">
-              <div className="text-xs text-ink-400">
+              <div className="text-xs text-[var(--fg-400)]">
                 Pocket harvests <code>MEMORIZE: …</code> lines from the assistant's replies and stores them locally.
                 Top facts are recalled into the system prompt on every turn.
               </div>
@@ -242,20 +249,20 @@ export function Settings({ open, onClose, onApply }: Props) {
                 placeholder="Filter facts…"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                className="w-full bg-ink-950 border border-ink-700 rounded-lg px-3 py-2 text-sm outline-none"
+                className="w-full bg-[var(--bg-950)] border border-[var(--bg-700)] rounded-lg px-3 py-2 text-sm outline-none"
               />
               <div className="space-y-1 max-h-96 overflow-y-auto">
-                {facts.length === 0 && <div className="text-sm text-ink-500 italic">No memories yet.</div>}
+                {facts.length === 0 && <div className="text-sm text-[var(--fg-500)] italic">No memories yet.</div>}
                 {facts
                   .filter((f) => !filter || f.text.toLowerCase().includes(filter.toLowerCase()))
                   .map((f) => (
-                  <div key={f.id} className="group flex items-start gap-2 px-3 py-2 bg-ink-950 border border-ink-800 rounded-lg text-sm">
+                  <div key={f.id} className="group flex items-start gap-2 px-3 py-2 bg-[var(--bg-950)] border border-[var(--bg-800)] rounded-lg text-sm">
                     <div className="flex-1">
                       <div>{f.text}</div>
-                      <div className="text-[10px] text-ink-500 mt-0.5">recalled {f.hits}× · {new Date(f.createdAt).toLocaleDateString()}</div>
+                      <div className="text-[10px] text-[var(--fg-500)] mt-0.5">recalled {f.hits}× · {new Date(f.createdAt).toLocaleDateString()}</div>
                     </div>
                     <button onClick={async () => { await deleteFact(f.id); setFacts(await listFacts()); }}
-                      className="opacity-0 group-hover:opacity-100 text-ink-400 hover:text-red-400">
+                      className="opacity-0 group-hover:opacity-100 text-[var(--fg-400)] hover:text-red-400">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
@@ -266,7 +273,7 @@ export function Settings({ open, onClose, onApply }: Props) {
 
           {tab === 'presence' && (
             <div className="space-y-3">
-              <div className="text-xs text-ink-400">
+              <div className="text-xs text-[var(--fg-400)]">
                 Presence is how Pocket carries itself — its posture, voice, and continuity rules across every model you plug in.
                 It's what gets sent first in every system prompt, before the live awareness block and before recalled memory.
               </div>
@@ -274,18 +281,18 @@ export function Settings({ open, onClose, onApply }: Props) {
                 value={presence}
                 onChange={(e) => { setPresenceText(e.target.value); setPresenceDirty(true); }}
                 rows={20}
-                className="w-full bg-ink-950 border border-ink-700 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-ink-600 leading-relaxed"
+                className="w-full bg-[var(--bg-950)] border border-[var(--bg-700)] rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-[var(--bg-600)] leading-relaxed"
               />
               <div className="flex items-center justify-between">
                 <button
                   onClick={() => { setPresenceText(DEFAULT_PRESENCE); setPresenceDirty(true); }}
-                  className="text-xs text-ink-400 hover:text-ink-200">
+                  className="text-xs text-[var(--fg-400)] hover:text-[var(--fg-200)]">
                   reset to default
                 </button>
                 <button
                   onClick={async () => { await setPresence(presence); setPresenceDirty(false); }}
                   disabled={!presenceDirty}
-                  className="px-3 py-1.5 rounded-lg bg-gold-500 text-ink-950 disabled:opacity-30 text-xs font-medium hover:bg-gold-400 transition-colors">
+                  className="px-3 py-1.5 rounded-lg bg-[var(--gold)] text-[var(--bg-950)] disabled:opacity-30 text-xs font-medium hover:bg-[var(--gold-bright)] transition-colors">
                   {presenceDirty ? 'save presence' : 'saved'}
                 </button>
               </div>
@@ -294,22 +301,22 @@ export function Settings({ open, onClose, onApply }: Props) {
 
           {tab === 'threads' && (
             <div className="space-y-3">
-              <div className="text-xs text-ink-400">
+              <div className="text-xs text-[var(--fg-400)]">
                 Cross-session memory: when you message any model, Pocket scans every chat in this browser for relevant snippets and includes them as context. So whichever provider/model you switch to, it walks in knowing what you've talked about before.
               </div>
               <Field label="Cross-session recall" hint="Pull relevant snippets from other chats into the system prompt every turn.">
                 <input type="checkbox" checked={crossSession}
                   onChange={async (e) => { setCrossSession(e.target.checked); await setSetting('crossSession', e.target.checked); }}
-                  className="w-4 h-4 accent-gold-500" />
+                  className="w-4 h-4 accent-[var(--gold)]" />
               </Field>
-              <div className="text-xs uppercase tracking-wider text-ink-400 pt-2">All chats stored locally</div>
+              <div className="text-xs uppercase tracking-wider text-[var(--fg-400)] pt-2">All chats stored locally</div>
               <div className="space-y-1 max-h-80 overflow-y-auto">
-                {allSessions.length === 0 && <div className="text-sm text-ink-500 italic">No chats yet.</div>}
+                {allSessions.length === 0 && <div className="text-sm text-[var(--fg-500)] italic">No chats yet.</div>}
                 {allSessions.map((s) => (
-                  <div key={s.id} className="flex items-center justify-between px-3 py-2 bg-ink-950 border border-ink-800 rounded-lg text-sm">
+                  <div key={s.id} className="flex items-center justify-between px-3 py-2 bg-[var(--bg-950)] border border-[var(--bg-800)] rounded-lg text-sm">
                     <div className="flex-1 min-w-0">
                       <div className="truncate">{s.title}</div>
-                      <div className="text-[10px] text-ink-500 mt-0.5">
+                      <div className="text-[10px] text-[var(--fg-500)] mt-0.5">
                         {sessionCounts[s.id] || 0} msg · {s.providerId}/{s.modelId.slice(0, 30)} · {new Date(s.updatedAt).toLocaleDateString()}
                       </div>
                     </div>
@@ -323,7 +330,7 @@ export function Settings({ open, onClose, onApply }: Props) {
             <div className="space-y-4">
               <Field label="Compression mode" hint="Heuristic compressor on user prompts. light = stopwords, aggressive = stopwords + abbreviations.">
                 <select value={compressMode} onChange={async (e) => { const v = e.target.value as CompressMode; setCompressMode(v); await setSetting('compressMode', v); }}
-                  className="bg-ink-950 border border-ink-700 rounded px-2 py-1 text-sm">
+                  className="bg-[var(--bg-950)] border border-[var(--bg-700)] rounded px-2 py-1 text-sm">
                   <option value="off">off</option>
                   <option value="light">light (~10-15%)</option>
                   <option value="aggressive">aggressive (~25-35%)</option>
@@ -331,19 +338,62 @@ export function Settings({ open, onClose, onApply }: Props) {
               </Field>
               <Field label="System prompt caching" hint="Anthropic only. Cuts cost on repeated context ~90%.">
                 <input type="checkbox" checked={cacheSystem} onChange={async (e) => { setCacheSystem(e.target.checked); await setSetting('cacheSystem', e.target.checked); }}
-                  className="w-4 h-4 accent-gold-500" />
+                  className="w-4 h-4 accent-[var(--gold)]" />
               </Field>
               <Field label="Keep last N turns full" hint="Older turns get compacted into a summary block.">
                 <input type="number" min={4} max={64} value={keepLast}
                   onChange={async (e) => { const v = Math.max(4, Math.min(64, +e.target.value || 16)); setKeepLast(v); await setSetting('keepLast', v); }}
-                  className="bg-ink-950 border border-ink-700 rounded px-2 py-1 text-sm w-20" />
+                  className="bg-[var(--bg-950)] border border-[var(--bg-700)] rounded px-2 py-1 text-sm w-20" />
               </Field>
+            </div>
+          )}
+
+          {tab === 'appearance' && (
+            <div className="space-y-4">
+              <Field label="Theme" hint="System follows your OS preference.">
+                <select value={theme} onChange={(e) => { const v = e.target.value as Theme; setThemeLocal(v); setStoredTheme(v); }}
+                  className="bg-[var(--bg-950)] border border-[var(--bg-700)] rounded px-2 py-1 text-sm">
+                  <option value="dark">dark</option>
+                  <option value="light">light</option>
+                  <option value="system">system</option>
+                </select>
+              </Field>
+              <Field label="Encrypt API keys at rest" hint="PBKDF2 + AES-GCM. You'll be prompted for the passphrase on each browser session.">
+                <input type="checkbox" checked={vaultOn}
+                  onChange={async (e) => {
+                    if (e.target.checked) {
+                      const p = prompt('Set a passphrase to encrypt your stored keys (cannot be recovered if forgotten):') || '';
+                      if (p.length < 6) { alert('Passphrase must be at least 6 characters.'); return; }
+                      await setupVault(p);
+                      setVaultOn(true);
+                    } else {
+                      if (!confirm('Disable encryption? Keys will be stored as plaintext in IndexedDB again.')) return;
+                      await disableVault();
+                      setVaultOn(false);
+                    }
+                  }}
+                  className="w-4 h-4 accent-[var(--gold)]" />
+              </Field>
+              {vaultOn && (
+                <div className="flex items-center gap-2">
+                  <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="new passphrase to rotate"
+                    className="flex-1 bg-[var(--bg-950)] border border-[var(--bg-700)] rounded px-2 py-1 text-xs font-mono" />
+                  <button disabled={newPass.length < 6}
+                    onClick={async () => { await setupVault(newPass); setNewPass(''); alert('Passphrase rotated.'); }}
+                    className="px-3 py-1 rounded bg-[var(--bg-800)] hover:bg-[var(--bg-700)] text-xs disabled:opacity-30">rotate</button>
+                  <button onClick={() => { lockVault(); alert('Vault locked. Refresh to unlock.'); }}
+                    className="px-3 py-1 rounded bg-[var(--bg-800)] hover:bg-[var(--bg-700)] text-xs">lock now</button>
+                </div>
+              )}
+              <div className="text-[11px] text-[var(--fg-500)] pt-2 border-t border-[var(--bg-800)]">
+                Pocket also installs as a PWA — on mobile use "Add to home screen", on desktop click the install icon in your browser's URL bar.
+              </div>
             </div>
           )}
 
           {tab === 'data' && (
             <div className="space-y-3">
-              <div className="text-sm text-ink-300">
+              <div className="text-sm text-[var(--fg-300)]">
                 Everything Pocket knows lives in this browser's IndexedDB and localStorage. Clearing browser data wipes it. No copies on any server.
               </div>
               <button onClick={async () => {
@@ -366,7 +416,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
     <div className="flex items-start justify-between gap-3">
       <div>
         <div className="text-sm">{label}</div>
-        {hint && <div className="text-[11px] text-ink-500 mt-0.5">{hint}</div>}
+        {hint && <div className="text-[11px] text-[var(--fg-500)] mt-0.5">{hint}</div>}
       </div>
       <div>{children}</div>
     </div>

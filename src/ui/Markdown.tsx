@@ -43,5 +43,5 @@ export function Markdown({ source }: { source: string }) {
     const raw = marked.parse(source, { renderer, async: false }) as string;
     return DOMPurify.sanitize(raw);
   }, [source]);
-  return <div className="md text-ink-100" dangerouslySetInnerHTML={{ __html: html }} />;
+  return <div className="md text-[var(--fg-100)]" dangerouslySetInnerHTML={{ __html: html }} />;
 }

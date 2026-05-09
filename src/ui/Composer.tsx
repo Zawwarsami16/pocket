@@ -48,15 +48,15 @@ export function Composer({ sessionId, busy, onSend, onStop, compressMode }: Prop
   const savings = compressMode !== 'off' && text ? estimateSavings(text, compressed) : null;
 
   return (
-    <div className="border-t border-ink-800 bg-ink-900/80 backdrop-blur p-3">
+    <div className="border-t border-[var(--bg-800)] bg-[var(--bg-900)]/80 backdrop-blur px-3 pt-3 pb-3 pb-safe">
       <div className="max-w-3xl mx-auto">
         {pending.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-2">
             {pending.map((p) => (
-              <div key={p.id} className="flex items-center gap-1 bg-ink-800 px-2 py-1 rounded text-xs">
-                <span className="text-gold-500">{p.kind === 'image' ? '🖼' : p.kind === 'pdf' ? '📄' : '📎'}</span>
+              <div key={p.id} className="flex items-center gap-1 bg-[var(--bg-800)] px-2 py-1 rounded text-xs text-[var(--fg-200)]">
+                <span className="text-[var(--gold)]">{p.kind === 'image' ? '🖼' : p.kind === 'pdf' ? '📄' : '📎'}</span>
                 <span className="truncate max-w-[180px]">{p.name}</span>
-                <button onClick={() => setPending((arr) => arr.filter((x) => x.id !== p.id))} className="text-ink-400 hover:text-ink-100">
+                <button onClick={() => setPending((arr) => arr.filter((x) => x.id !== p.id))} className="text-[var(--fg-400)] hover:text-[var(--fg-100)]">
                   <X className="w-3 h-3" />
                 </button>
               </div>
@@ -64,8 +64,8 @@ export function Composer({ sessionId, busy, onSend, onStop, compressMode }: Prop
           </div>
         )}
 
-        <div className="flex items-end gap-2 bg-ink-800 rounded-2xl p-2 border border-ink-700 focus-within:border-ink-600">
-          <label className="p-2 rounded-full hover:bg-ink-700 cursor-pointer text-ink-300" title="Attach file">
+        <div className="flex items-end gap-2 bg-[var(--bg-800)] rounded-2xl p-2 border border-[var(--bg-700)] focus-within:border-[var(--bg-600)] transition-colors">
+          <label className="p-2 rounded-full hover:bg-[var(--bg-700)] cursor-pointer text-[var(--fg-300)]" title="Attach file">
             <Paperclip className="w-5 h-5" />
             <input type="file" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
           </label>
@@ -80,21 +80,21 @@ export function Composer({ sessionId, busy, onSend, onStop, compressMode }: Prop
               }
             }}
             placeholder="Message Pocket…"
-            className="flex-1 bg-transparent outline-none resize-none py-2 px-1 text-sm placeholder-ink-500 max-h-[280px]"
+            className="flex-1 bg-transparent outline-none resize-none py-2 px-1 text-sm placeholder-[var(--fg-500)] max-h-[280px] text-[var(--fg-100)]"
             rows={1}
           />
           {busy ? (
-            <button onClick={onStop} className="p-2 rounded-full bg-ink-700 hover:bg-ink-600 text-ink-100" title="Stop">
+            <button onClick={onStop} className="p-2 rounded-full bg-[var(--bg-700)] hover:bg-[var(--bg-600)] text-[var(--fg-100)]" title="Stop">
               <StopCircle className="w-5 h-5" />
             </button>
           ) : (
-            <button onClick={trySend} disabled={!text.trim() && !pending.length} className="p-2 rounded-full bg-gold-500 hover:bg-gold-400 disabled:opacity-30 disabled:cursor-not-allowed text-ink-950 transition-colors" title="Send (Enter)">
+            <button onClick={trySend} disabled={!text.trim() && !pending.length} className="p-2 rounded-full bg-[var(--gold)] hover:bg-[var(--gold-bright)] disabled:opacity-30 disabled:cursor-not-allowed text-[var(--bg-950)] transition-colors" title="Send (Enter)">
               <Send className="w-5 h-5" />
             </button>
           )}
         </div>
         {savings && savings.pct > 0 && (
-          <div className="text-[10px] text-ink-500 mt-1.5 text-right">
+          <div className="text-[10px] text-[var(--fg-500)] mt-1.5 text-right">
             compress {compressMode}: -{savings.saved} chars (~{savings.pct}%)
           </div>
         )}
