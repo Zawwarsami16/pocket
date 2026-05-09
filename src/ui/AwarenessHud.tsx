@@ -100,7 +100,7 @@ export function AwarenessHud({ sessionId, lastUserText }: Props) {
             </Section>
           )}
           {!snippets.length && !facts.length && (
-            <div className="text-[var(--fg-500)] italic text-[11px]">Nothing matched this thread yet — keep talking, memory grows.</div>
+            <div className="text-[var(--fg-500)] italic text-[11px]">Nothing matched this thread yet. Keep talking, memory grows.</div>
           )}
         </div>
       )}

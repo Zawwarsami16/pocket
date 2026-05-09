@@ -278,7 +278,7 @@ export function Settings({ open, onClose, onApply }: Props) {
           {tab === 'presence' && (
             <div className="space-y-3">
               <div className="text-xs text-[var(--fg-400)]">
-                Presence is how Pocket carries itself — its posture, voice, and continuity rules across every model you plug in.
+                Presence is how Pocket carries itself: its posture, voice, and continuity rules across every model you plug in.
                 It's what gets sent first in every system prompt, before the live awareness block and before recalled memory.
               </div>
               <textarea
@@ -390,7 +390,7 @@ export function Settings({ open, onClose, onApply }: Props) {
                 </div>
               )}
               <div className="text-[11px] text-[var(--fg-500)] pt-2 border-t border-[var(--bg-800)]">
-                Pocket also installs as a PWA — on mobile use "Add to home screen", on desktop click the install icon in your browser's URL bar.
+                Pocket also installs as a PWA. On mobile use "Add to home screen", on desktop click the install icon in your browser's URL bar.
               </div>
             </div>
           )}

@@ -19,7 +19,7 @@ export function Welcome({ onAddKey }: Props) {
           <span className="gold-text-gradient">Pocket</span>
         </h1>
         <p className="text-sm text-[var(--fg-300)] leading-relaxed mb-8 max-w-sm mx-auto">
-          One key. Any model. Browser-only AI chat that remembers you across every conversation — without a server holding any of it.
+          One key. Any model. Browser-only AI chat that remembers you across every conversation, without a server holding any of it.
         </p>
         <div className="grid gap-2.5 text-left mb-8 text-sm">
           <Bullet>One key, any model. Auto-detected from prefix.</Bullet>
