@@ -1,8 +1,10 @@
 interface Props {
+  hasKey: boolean;
   onAddKey: () => void;
+  onStartChat: () => void;
 }
 
-export function Welcome({ onAddKey }: Props) {
+export function Welcome({ hasKey, onAddKey, onStartChat }: Props) {
   return (
     <div className="flex-1 grid place-items-center px-6 relative overflow-hidden">
       <div
@@ -26,10 +28,25 @@ export function Welcome({ onAddKey }: Props) {
           <Bullet>Cross-session memory. Switch models, keep continuity.</Bullet>
           <Bullet>No server. No account. Clear browser data → forgotten.</Bullet>
         </div>
-        <button onClick={onAddKey}
-          className="px-5 py-2.5 rounded-lg bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold-deep)] text-[var(--bg-950)] text-sm font-medium elev-2 hover:elev-3">
-          Add your first key
-        </button>
+
+        {hasKey ? (
+          <div className="flex flex-col items-center gap-3">
+            <button onClick={onStartChat}
+              className="px-5 py-2.5 rounded-lg bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold-deep)] text-[var(--bg-950)] text-sm font-medium elev-2 hover:elev-3">
+              Start your first chat
+            </button>
+            <button onClick={onAddKey}
+              className="text-xs text-[var(--fg-400)] hover:text-[var(--fg-200)] underline underline-offset-4">
+              manage keys
+            </button>
+          </div>
+        ) : (
+          <button onClick={onAddKey}
+            className="px-5 py-2.5 rounded-lg bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold-deep)] text-[var(--bg-950)] text-sm font-medium elev-2 hover:elev-3">
+            Add your first key
+          </button>
+        )}
+
         <div className="text-[11px] text-[var(--fg-500)] mt-5">
           Press <kbd className="px-1.5 py-0.5 rounded bg-[var(--bg-800)] border border-[var(--bg-750)] font-mono">⌘K</kbd> any time to search.
         </div>

@@ -11,7 +11,7 @@ import { getActive, getSetting } from '../db/keystore';
 import { getProvider } from '../providers/registry';
 import { sendTurn } from '../ai/chat';
 import { db } from '../db/schema';
-import { setSessionModel } from '../db/sessions';
+import { setSessionModel, createSession } from '../db/sessions';
 import type { CompressMode } from '../ai/compress';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { initTheme } from './theme';
@@ -143,7 +143,28 @@ export default function App() {
     setDefaultModel(modelId);
     if (session && (session.providerId !== providerId || session.modelId !== modelId)) {
       await setSessionModel(session.id, providerId, modelId);
+      return;
     }
+    // No active session yet — create one so the user lands in chat
+    if (!activeId) {
+      const sessions = await db.sessions.orderBy('updatedAt').reverse().toArray();
+      if (sessions[0]) {
+        setActiveId(sessions[0].id);
+      } else {
+        const s = await createSession({ providerId, modelId });
+        setActiveId(s.id);
+      }
+    }
+  }
+
+  async function startNewChat() {
+    if (!defaultProvider || !defaultModel) {
+      setSettingsOpen(true);
+      return;
+    }
+    const s = await createSession({ providerId: defaultProvider, modelId: defaultModel });
+    setActiveId(s.id);
+    setSidebarOpen(false);
   }
 
   return (
@@ -173,7 +194,22 @@ export default function App() {
             <Composer sessionId={session.id} busy={busy} onSend={send} onStop={stop} compressMode={compressMode} />
           </>
         ) : (
-          <Welcome onAddKey={() => setSettingsOpen(true)} />
+          <>
+            <header className="md:hidden border-b border-[var(--bg-800)] glass px-3 py-2.5 flex items-center gap-3 text-sm pt-safe">
+              <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded hover:bg-[var(--bg-800)] text-[var(--fg-300)]" title="Menu">
+                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+              </button>
+              <span className="font-semibold tracking-tight text-[var(--fg-100)] flex-1">Pocket</span>
+              <button onClick={() => setSettingsOpen(true)} className="p-1.5 rounded hover:bg-[var(--bg-800)] text-[var(--fg-300)]" title="Settings">
+                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              </button>
+            </header>
+            <Welcome
+              hasKey={!!(defaultProvider && defaultModel)}
+              onAddKey={() => setSettingsOpen(true)}
+              onStartChat={startNewChat}
+            />
+          </>
         )}
       </div>
       <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} onApply={applySettings} />
