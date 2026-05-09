@@ -1,5 +1,7 @@
 # Pocket
 
+> **Live:** [pocket-tau-sepia.vercel.app](https://pocket-tau-sepia.vercel.app)
+
 Browser-only AI chat. Drop in any API key — Anthropic, OpenRouter, Groq, Together, or a custom OpenAI-compatible endpoint — and the model picker fills itself. Every chat, attachment, and remembered fact lives in your browser's IndexedDB. Nothing on a server.
 
 ## Why
