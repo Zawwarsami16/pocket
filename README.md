@@ -2,14 +2,20 @@
 
 > **Live:** [pocket-tau-sepia.vercel.app](https://pocket-tau-sepia.vercel.app)
 
-Browser-only AI chat. Drop in any API key — Anthropic, OpenRouter, Groq, Together, or a custom OpenAI-compatible endpoint — and the model picker fills itself. Every chat, attachment, and remembered fact lives in your browser's IndexedDB. Nothing on a server.
+Browser-only AI chat. Paste any API key — Anthropic, OpenRouter, Groq, Together, or any OpenAI-compatible endpoint — and the model picker fills itself. Chats, attachments, and remembered facts all live in IndexedDB on the device. Nothing on a server.
 
-## Why
+## Why I built this
 
-- **One key, any model.** Paste, auto-detect, go.
-- **Yours alone.** No backend. The only network call is from your browser straight to the AI provider. Clear browser data → app forgets you.
-- **Memory that sticks.** The assistant ends turns with `MEMORIZE: …` lines. Pocket harvests them silently into a local fact store, recalls top-matching facts on every new turn.
-- **Token-aware.** Sliding window with summary compaction. Optional heuristic prompt compression. Anthropic prompt caching enabled by default.
+Buying API access shouldn't mean handing your data to a third-party chat wrapper or paying $20/month for a UI someone else owns. I wanted a clean place to talk to whatever model I was paying for, with my own memory, no backend, no subscription.
+
+So:
+
+- **One key, any model.** Paste, auto-detect, chat.
+- **Yours alone.** No server. Browser → provider, that's the only network hop. Clear browser data and Pocket forgets you.
+- **Memory that sticks.** The assistant ends turns with `MEMORIZE: …` lines. Pocket harvests them silently into a local fact store, recalls top-matching ones on every new turn.
+- **Token-aware.** Sliding window with summary compaction. Optional heuristic prompt compression. Anthropic prompt caching on by default.
+
+Works as a standalone chat app. Also designed to pair with [zhub](https://github.com/Zawwarsami16/zhub) — paste a `zk_` URL+key and Pocket talks to your own AI living on a `$5` VPS instead of a hosted provider. Same surface either way.
 
 ## Provider matrix (browser-direct)
 
@@ -62,6 +68,10 @@ Live token estimate is shown under each assistant reply.
 - API keys stored in IndexedDB. Use a passphrase lock (coming soon) or your OS keychain via the browser's password manager.
 - No telemetry. The only outbound HTTP from Pocket is to the provider you configured.
 - `vercel.json` ships strict headers (`X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`).
+
+## Stack
+
+Vite + React + TypeScript. Tailwind for styling. Dexie (IndexedDB) for local storage. No bundler-side proxy, no Node server, no backend at all — every API call goes browser → provider directly.
 
 ## License
 
