@@ -108,9 +108,9 @@ Edit it to taste. Reset to default any time.
 
 Whatever the provider charges. Pocket adds nothing.
 
-![Anthropic console — Pocket key, $0.03 across 6 chats](docs/screenshots/anthropic-console.png)
+![Provider console — Pocket key, $0.03 across 6 chats](docs/screenshots/anthropic-console.png)
 
-That screenshot is my Anthropic console after a real testing session: my own key, my own bill, no subscription, no SaaS markup. Three cents to chat with Claude Opus 4.7.
+That's my provider console after a real testing session: my own key, my own bill, no subscription, no SaaS markup. Three cents for six conversations on a flagship reasoning model.
 
 ---
 
