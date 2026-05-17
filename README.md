@@ -1,5 +1,13 @@
 # Pocket
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Tailwind](https://img.shields.io/badge/Tailwind-3-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![IndexedDB](https://img.shields.io/badge/storage-IndexedDB-444?style=flat-square)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
+[![Live demo](https://img.shields.io/badge/demo-live-success?style=flat-square)](https://pocket-tau-sepia.vercel.app)
+
 > **Live:** [pocket-tau-sepia.vercel.app](https://pocket-tau-sepia.vercel.app)
 
 Browser-only AI chat. Paste any API key — Anthropic, OpenRouter, Groq, Together, or any OpenAI-compatible endpoint — and the model picker fills itself. Chats, attachments, and remembered facts all live in IndexedDB on the device. Nothing on a server.
