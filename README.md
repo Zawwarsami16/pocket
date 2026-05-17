@@ -1,12 +1,12 @@
 # Pocket
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
-[![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Tailwind](https://img.shields.io/badge/Tailwind-3-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![IndexedDB](https://img.shields.io/badge/storage-IndexedDB-444?style=flat-square)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
-[![Live demo](https://img.shields.io/badge/demo-live-success?style=flat-square)](https://pocket-tau-sepia.vercel.app)
+[![License: MIT](https://img.shields.io/badge/License-MIT-ff003c?style=flat-square&labelColor=0a0a0a)](LICENSE)
+[![React 19](https://img.shields.io/badge/React-19-ff003c?style=flat-square&logo=react&logoColor=ff003c&labelColor=0a0a0a)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-ff003c?style=flat-square&logo=typescript&logoColor=ff003c&labelColor=0a0a0a)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6-ff003c?style=flat-square&logo=vite&logoColor=ff003c&labelColor=0a0a0a)](https://vitejs.dev/)
+[![Tailwind](https://img.shields.io/badge/Tailwind-3-ff003c?style=flat-square&logo=tailwindcss&logoColor=ff003c&labelColor=0a0a0a)](https://tailwindcss.com/)
+[![IndexedDB](https://img.shields.io/badge/storage-IndexedDB-ff003c?style=flat-square&labelColor=0a0a0a)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
+[![Live demo](https://img.shields.io/badge/demo-live-ff003c?style=flat-square&labelColor=0a0a0a)](https://pocket-tau-sepia.vercel.app)
 
 > **Live:** [pocket-tau-sepia.vercel.app](https://pocket-tau-sepia.vercel.app)
 
