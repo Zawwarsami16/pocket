@@ -114,7 +114,8 @@ export const anthropic: Provider = {
             yield { type: 'delta', text: '' };
           }
         } else if (j.type === 'message_start' && j.message?.usage) {
-          inTok = j.message.usage.input_tokens || 0;
+          const u = j.message.usage;
+          inTok = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
           yield { type: 'delta', text: '' };
         } else if (j.type === 'message_delta') {
           if (j.usage?.output_tokens) outTok = j.usage.output_tokens;
