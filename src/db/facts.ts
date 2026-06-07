@@ -31,9 +31,9 @@ export async function recallFacts(query: string, limit = 8): Promise<Fact[]> {
   const scored = all
     .map((f) => {
       const overlap = tokens.filter((t) => f.tags.includes(t)).length;
-      return { f, score: overlap + (f.hits || 0) * 0.1 };
+      return { f, overlap, score: overlap + (f.hits || 0) * 0.1 };
     })
-    .filter((x) => x.score > 0)
+    .filter((x) => x.overlap > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map((x) => x.f);
