@@ -8,6 +8,7 @@ All notable changes to Pocket get logged here. The format follows [Keep a Change
 - MIT license file at the repo root.
 - Badge row in the README (license, stack, live demo).
 - This changelog.
+- Test coverage for provider key auto-detection (`detectProvider`/`getProvider`) and the zhub URL helpers, including precedence between `sk-ant-`, `sk-or-`, and bare `sk-` keys.
 
 ## [0.1.0] — 2026-04-23
 
