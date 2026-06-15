@@ -101,6 +101,7 @@ export async function sendTurn(session: Session, userText: string, attachmentIds
   let buffer = '';
   let inTok = 0, outTok = 0;
   let errored = false;
+  let stopped = false;
 
   const watchdog = new AbortController();
   const linkedSignal = opts.signal
@@ -143,13 +144,13 @@ export async function sendTurn(session: Session, userText: string, attachmentIds
   } catch (e: any) {
     if (stalledTimer) clearTimeout(stalledTimer);
     if (e?.name === 'AbortError') {
-      const reason = watchdog.signal.aborted ? 'Response stalled (no chunks for 90s).' : '_[stopped]_';
       if (watchdog.signal.aborted) {
         errored = true;
+        const reason = 'Response stalled (no chunks for 90s).';
         handlers.onError?.(reason);
         await updateMessage(placeholder.id, { error: reason });
       } else {
-        await updateMessage(placeholder.id, { content: buffer + '\n\n_[stopped]_' });
+        stopped = true;
       }
     } else {
       errored = true;
@@ -162,7 +163,7 @@ export async function sendTurn(session: Session, userText: string, attachmentIds
   if (!errored) {
     const { cleaned, saved } = await harvestAndStore(buffer, session.id);
     await updateMessage(placeholder.id, {
-      content: cleaned,
+      content: stopped ? cleaned + '\n\n_[stopped]_' : cleaned,
       tokensIn: inTok || inputEst,
       tokensOut: outTok
     });
