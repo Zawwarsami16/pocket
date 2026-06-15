@@ -56,11 +56,13 @@ export async function snapshotEntity(currentSessionId?: string): Promise<EntityS
   const facts = await topFacts(5);
   const recentTopics = facts.map((f) => f.text);
 
+  const nav = typeof navigator !== 'undefined' ? navigator : undefined;
+
   return {
     time,
     posture: postureFor(hour),
-    language: navigator?.language,
-    online: navigator?.onLine ?? true,
+    language: nav?.language,
+    online: nav?.onLine ?? true,
     totalChats,
     totalMessages,
     totalFacts,
