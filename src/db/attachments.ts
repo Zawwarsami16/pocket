@@ -15,8 +15,9 @@ function classify(mime: string): Attachment['kind'] {
 export async function addAttachment(sessionId: string, file: File): Promise<Attachment> {
   const buf = await file.arrayBuffer();
   const hash = await sha256(buf);
-  const existing = await db.attachments.where('hash').equals(hash).first();
-  if (existing && existing.sessionId === sessionId) return existing;
+  const sameHash = await db.attachments.where('hash').equals(hash).toArray();
+  const existing = sameHash.find((a) => a.sessionId === sessionId);
+  if (existing) return existing;
 
   const a: Attachment = {
     id: uid(),
