@@ -30,8 +30,12 @@ export async function deleteMessage(id: string) {
 export async function deleteFrom(id: string) {
   const msg = await db.messages.get(id);
   if (!msg) return;
-  await db.messages
-    .where('[sessionId+createdAt]')
-    .between([msg.sessionId, msg.createdAt], [msg.sessionId, Infinity])
-    .delete();
+  // Delete by display-order position, not raw timestamp range: messages that
+  // share this one's createdAt (e.g. a user turn and its reply, appended in the
+  // same ms) but sort *before* it in listMessages must be kept.
+  const ordered = await listMessages(msg.sessionId);
+  const from = ordered.findIndex((m) => m.id === id);
+  if (from === -1) return;
+  const ids = ordered.slice(from).map((m) => m.id);
+  await db.messages.bulkDelete(ids);
 }
