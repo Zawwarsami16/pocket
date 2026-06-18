@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { db } from '../src/db/schema';
 import {
   createSession,
@@ -49,6 +49,25 @@ describe('listSessions', () => {
     const b = await createSession({ providerId: 'p', modelId: 'm' });
     const c = await createSession({ providerId: 'p', modelId: 'm' });
     expect((await listSessions()).map((s) => s.id)).toEqual([c.id, b.id, a.id]);
+  });
+
+  it('keeps newest-first deterministically when created within the same clock tick', async () => {
+    // Pin Date.now so every createSession lands in one millisecond — the real
+    // case of rapid "new chat" clicks. Without a monotonic stamp these tie on
+    // updatedAt and the index falls back to random-UUID order, flipping the
+    // sidebar between reads.
+    const spy = vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    try {
+      const a = await createSession({ providerId: 'p', modelId: 'm' });
+      const b = await createSession({ providerId: 'p', modelId: 'm' });
+      const c = await createSession({ providerId: 'p', modelId: 'm' });
+      const order = (await listSessions()).map((s) => s.id);
+      expect(order).toEqual([c.id, b.id, a.id]);
+      // and stable across repeated reads
+      expect((await listSessions()).map((s) => s.id)).toEqual(order);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('reorders when a session is touched', async () => {
