@@ -104,6 +104,16 @@ export async function* chatOAI(
     }
     try {
       const j = JSON.parse(ev.data);
+      // A failure after the initial 200 (rate limit, server error, content
+      // filter) is delivered as an SSE `error` data event, not via HTTP
+      // status. Without this the stream would just end with whatever partial
+      // text arrived, then yield usage + done — masquerading as a clean,
+      // truncated completion with no diagnostic surfaced to the caller.
+      if (j.error) {
+        const msg = j.error.message || j.error.code || JSON.stringify(j.error);
+        yield { type: 'error', error: `${msg}` };
+        return;
+      }
       const delta = j.choices?.[0]?.delta?.content;
       if (typeof delta === 'string' && delta) yield { type: 'delta', text: delta };
       else if (Array.isArray(delta)) {
