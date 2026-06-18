@@ -85,16 +85,19 @@ export async function recallAcrossSessions(
 
 export function formatRecallBlock(snippets: ScoredSnippet[]): string {
   if (!snippets.length) return '';
-  const groups = new Map<string, ScoredSnippet[]>();
+  // Group by sessionId, not title: the default titles ("New chat"/"Untitled")
+  // collide constantly, so grouping by title merges unrelated conversations
+  // under one heading. Keep the title only for display.
+  const groups = new Map<string, { title: string; items: ScoredSnippet[] }>();
   for (const s of snippets) {
-    const arr = groups.get(s.sessionTitle) || [];
-    arr.push(s);
-    groups.set(s.sessionTitle, arr);
+    const group = groups.get(s.sessionId) || { title: s.sessionTitle, items: [] };
+    group.items.push(s);
+    groups.set(s.sessionId, group);
   }
   const lines: string[] = ['Relevant context from your other chats with this user (cross-session memory):'];
-  for (const [title, arr] of groups) {
+  for (const { title, items } of groups.values()) {
     lines.push(`\n— from "${title}":`);
-    for (const s of arr) {
+    for (const s of items) {
       lines.push(`  ${s.role === 'user' ? 'they said' : 'you said'}: ${s.text}`);
     }
   }

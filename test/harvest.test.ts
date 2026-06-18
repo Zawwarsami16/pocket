@@ -33,7 +33,7 @@ describe('harvestMemorize', () => {
 
 describe('formatRecallBlock', () => {
   const snippet = (sessionTitle: string, role: 'user' | 'assistant', text: string) => ({
-    sessionId: 's',
+    sessionId: sessionTitle,
     sessionTitle,
     role,
     text,
