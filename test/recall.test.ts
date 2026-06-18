@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db, type Role } from '../src/db/schema';
-import { recallAcrossSessions } from '../src/ai/recall';
+import { recallAcrossSessions, formatRecallBlock } from '../src/ai/recall';
 
 let seq = 0;
 
@@ -85,5 +85,60 @@ describe('recallAcrossSessions', () => {
     const hits = await recallAcrossSessions('kayak', { perSnippetChars: 40 });
     expect(hits[0].text.endsWith('…')).toBe(true);
     expect(hits[0].text.length).toBeLessThanOrEqual(41);
+  });
+});
+
+type Snippet = Parameters<typeof formatRecallBlock>[0][number];
+function snippet(over: Partial<Snippet>): Snippet {
+  return {
+    sessionId: 's1',
+    sessionTitle: 'Chat',
+    role: 'user',
+    text: 'hello',
+    createdAt: 0,
+    score: 1,
+    ...over
+  };
+}
+
+describe('formatRecallBlock', () => {
+  it('returns an empty string when there are no snippets', () => {
+    expect(formatRecallBlock([])).toBe('');
+  });
+
+  it('labels user vs assistant snippets distinctly', () => {
+    const block = formatRecallBlock([
+      snippet({ role: 'user', text: 'the kayak is red' }),
+      snippet({ role: 'assistant', text: 'noted, red kayak' })
+    ]);
+    expect(block).toContain('they said: the kayak is red');
+    expect(block).toContain('you said: noted, red kayak');
+  });
+
+  it('groups snippets from one session under a single heading', () => {
+    const block = formatRecallBlock([
+      snippet({ sessionId: 's1', sessionTitle: 'Trip', text: 'a' }),
+      snippet({ sessionId: 's1', sessionTitle: 'Trip', text: 'b' })
+    ]);
+    expect(block.match(/— from /g)).toHaveLength(1);
+    expect(block).toContain('— from "Trip":');
+  });
+
+  it('keeps same-titled but distinct sessions in separate groups', () => {
+    // "New chat"/"Untitled" are the default titles, so unrelated sessions
+    // routinely share a title; they must not be merged into one heading.
+    const block = formatRecallBlock([
+      snippet({ sessionId: 's1', sessionTitle: 'New chat', text: 'about kayaks' }),
+      snippet({ sessionId: 's2', sessionTitle: 'New chat', text: 'about taxes' })
+    ]);
+    expect(block.match(/— from "New chat":/g)).toHaveLength(2);
+  });
+
+  it('keeps groups in first-seen order of the (score-sorted) snippets', () => {
+    const block = formatRecallBlock([
+      snippet({ sessionId: 's2', sessionTitle: 'Second', text: 'x' }),
+      snippet({ sessionId: 's1', sessionTitle: 'First', text: 'y' })
+    ]);
+    expect(block.indexOf('Second')).toBeLessThan(block.indexOf('First'));
   });
 });
