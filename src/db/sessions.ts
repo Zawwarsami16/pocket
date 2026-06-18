@@ -1,12 +1,12 @@
-import { db, uid, type Session } from './schema';
+import { db, uid, now, type Session } from './schema';
 
 export async function createSession(opts: { providerId: string; modelId: string; title?: string; systemPrompt?: string }): Promise<Session> {
-  const now = Date.now();
+  const ts = now();
   const s: Session = {
     id: uid(),
     title: opts.title?.trim() || 'New chat',
-    createdAt: now,
-    updatedAt: now,
+    createdAt: ts,
+    updatedAt: ts,
     providerId: opts.providerId,
     modelId: opts.modelId,
     systemPrompt: opts.systemPrompt,
@@ -25,21 +25,21 @@ export async function getSession(id: string): Promise<Session | undefined> {
 }
 
 export async function renameSession(id: string, title: string) {
-  await db.sessions.update(id, { title: title.trim() || 'Untitled', updatedAt: Date.now() });
+  await db.sessions.update(id, { title: title.trim() || 'Untitled', updatedAt: now() });
 }
 
 export async function touchSession(id: string) {
-  await db.sessions.update(id, { updatedAt: Date.now() });
+  await db.sessions.update(id, { updatedAt: now() });
 }
 
 export async function setSessionModel(id: string, providerId: string, modelId: string) {
-  await db.sessions.update(id, { providerId, modelId, updatedAt: Date.now() });
+  await db.sessions.update(id, { providerId, modelId, updatedAt: now() });
 }
 
 export async function togglePinned(id: string) {
   const s = await db.sessions.get(id);
   if (!s) return;
-  await db.sessions.update(id, { pinned: s.pinned ? 0 : 1, updatedAt: Date.now() });
+  await db.sessions.update(id, { pinned: s.pinned ? 0 : 1, updatedAt: now() });
 }
 
 export async function deleteSession(id: string) {

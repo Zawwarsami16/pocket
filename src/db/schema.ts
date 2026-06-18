@@ -76,3 +76,15 @@ export const db = new PocketDB();
 
 export const uid = () =>
   (crypto.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`);
+
+// Monotonic millisecond clock. Date.now() can return the same value for calls
+// within the same tick, which leaves rows that order by a timestamp index
+// (e.g. sessions by updatedAt) tie-broken by their random UUID primary key —
+// a nondeterministic, recency-violating order. Bumping by 1ms on collision
+// keeps timestamps strictly increasing so recency order is total and stable.
+let _clock = 0;
+export const now = (): number => {
+  const t = Date.now();
+  _clock = t > _clock ? t : _clock + 1;
+  return _clock;
+};
