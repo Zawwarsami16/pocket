@@ -46,8 +46,7 @@ export async function recallAcrossSessions(
   const perSnippetChars = opts.perSnippetChars ?? 360;
   const maxSnippets = opts.maxSnippets ?? 5;
 
-  const scored: ScoredSnippet[] = [];
-  const seenPerSession = new Map<string, number>();
+  const bySession = new Map<string, ScoredSnippet[]>();
 
   for (const m of messages) {
     if (!m.content || !m.content.trim()) continue;
@@ -65,11 +64,8 @@ export async function recallAcrossSessions(
     const recencyBoost = 1 + Math.max(0, 30 - (Date.now() - m.createdAt) / 86_400_000) * 0.02;
     const score = (overlap / Math.sqrt(msgTokens.length)) * recencyBoost;
 
-    const taken = seenPerSession.get(m.sessionId) || 0;
-    if (taken >= 2) continue;
-    seenPerSession.set(m.sessionId, taken + 1);
-
-    scored.push({
+    const arr = bySession.get(m.sessionId) || [];
+    arr.push({
       sessionId: m.sessionId,
       sessionTitle: session.title,
       role: m.role,
@@ -77,6 +73,17 @@ export async function recallAcrossSessions(
       createdAt: m.createdAt,
       score
     });
+    bySession.set(m.sessionId, arr);
+  }
+
+  // Keep the two highest-scoring snippets per session (for cross-session
+  // diversity), then sort globally. Capping during the newest-first scan
+  // instead would drop a session's best match in favour of weaker-but-newer
+  // ones, defeating the scoring.
+  const scored: ScoredSnippet[] = [];
+  for (const arr of bySession.values()) {
+    arr.sort((a, b) => b.score - a.score);
+    scored.push(...arr.slice(0, 2));
   }
 
   scored.sort((a, b) => b.score - a.score);
