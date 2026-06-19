@@ -21,6 +21,11 @@ async function addMessage(sessionId: string, role: Role, content: string) {
   await db.messages.put({ id, sessionId, role, content, createdAt: Date.now() + seq });
 }
 
+async function addMessageAt(sessionId: string, role: Role, content: string, createdAt: number) {
+  const id = `m${seq++}`;
+  await db.messages.put({ id, sessionId, role, content, createdAt });
+}
+
 beforeEach(async () => {
   await db.messages.clear();
   await db.sessions.clear();
@@ -68,6 +73,24 @@ describe('recallAcrossSessions', () => {
     for (let i = 0; i < 5; i++) await addMessage('s1', 'user', `kayak note number ${i}`);
     const hits = await recallAcrossSessions('kayak', { maxSnippets: 10 });
     expect(hits).toHaveLength(2);
+  });
+
+  it('keeps the highest-scoring snippets per session, not the most recent', async () => {
+    // One session, three matches. The OLDEST message is the strongest match
+    // (query topic mentioned densely); the two newest are weak (one mention).
+    // The per-session cap of 2 must keep the best two by score — dropping the
+    // strongest match just because two weaker-but-newer ones were scanned first
+    // defeats the scoring the function exists to apply.
+    await addSession('s1', 'Busy');
+    await addMessageAt('s1', 'user', 'kayak alpha bravo', 3000);
+    await addMessageAt('s1', 'user', 'kayak charlie delta', 2000);
+    await addMessageAt('s1', 'user', 'kayak kayak kayak kayak', 1000);
+
+    const hits = await recallAcrossSessions('kayak', { maxSnippets: 10 });
+    expect(hits).toHaveLength(2);
+    // The dense match is the top result and must not have been capped out.
+    expect(hits.some((h) => h.text === 'kayak kayak kayak kayak')).toBe(true);
+    expect(hits[0].text).toBe('kayak kayak kayak kayak');
   });
 
   it('caps the total number of snippets to maxSnippets', async () => {
