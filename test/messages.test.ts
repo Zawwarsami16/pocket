@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { db } from '../src/db/schema';
 import { appendMessage, listMessages, updateMessage, deleteMessage, deleteFrom } from '../src/db/messages';
 
@@ -84,5 +84,28 @@ describe('deleteFrom', () => {
 
     await deleteFrom('BBB');
     expect((await listMessages('s1')).map((m) => m.id)).toEqual(['AAA']);
+  });
+});
+
+describe('appendMessage monotonic clock', () => {
+  it('stamps back-to-back calls with strictly increasing createdAt so user turn always sorts before assistant placeholder', async () => {
+    // Regression: appendMessage used Date.now() which can return the same value
+    // for two calls within one ms. sendTurn appends user then assistant placeholder
+    // in rapid succession — same createdAt left the listMessages ordering
+    // nondeterministic, so turns.slice(0,-1) could drop the user turn instead of
+    // the placeholder. now() bumps by 1ms on collision, making it strictly monotonic.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(1_000_000);
+    try {
+      await db.sessions.put({ id: 'sx', title: 't', createdAt: 0, updatedAt: 0, providerId: 'p', modelId: 'm' });
+      const user = await appendMessage('sx', 'user', 'q');
+      const asst = await appendMessage('sx', 'assistant', '');
+      // The assistant placeholder must come strictly after the user message
+      expect(asst.createdAt).toBeGreaterThan(user.createdAt);
+      const msgs = await listMessages('sx');
+      expect(msgs.map((m) => m.role)).toEqual(['user', 'assistant']);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

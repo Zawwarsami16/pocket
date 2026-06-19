@@ -1,4 +1,4 @@
-import { db, uid, type Message, type Role } from './schema';
+import { db, uid, now, type Message, type Role } from './schema';
 import { touchSession } from './sessions';
 
 export async function appendMessage(sessionId: string, role: Role, content: string, extras: Partial<Message> = {}): Promise<Message> {
@@ -7,7 +7,7 @@ export async function appendMessage(sessionId: string, role: Role, content: stri
     sessionId,
     role,
     content,
-    createdAt: Date.now(),
+    createdAt: now(),
     ...extras
   };
   await db.messages.put(msg);
