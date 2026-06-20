@@ -38,7 +38,7 @@ export async function recallFacts(query: string, limit = 8): Promise<Fact[]> {
     .slice(0, limit)
     .map((x) => x.f);
   await db.facts.bulkUpdate(scored.map((f) => ({ key: f.id, changes: { hits: (f.hits || 0) + 1 } })));
-  return scored;
+  return scored.map((f) => ({ ...f, hits: (f.hits || 0) + 1 }));
 }
 
 export async function topFacts(limit = 20): Promise<Fact[]> {
