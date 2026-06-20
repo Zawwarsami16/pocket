@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { db } from '../src/db/schema';
 import { rememberFact, recallFacts, topFacts } from '../src/db/facts';
 
@@ -84,5 +84,21 @@ describe('topFacts', () => {
     await recallFacts('alpha'); // bumps alpha to 2 hits
     const top = await topFacts(5);
     expect(top[0].id).toBe(a!.id);
+  });
+
+  it('stamps facts with strictly-increasing createdAt even within one tick (monotonic clock)', async () => {
+    // Pin Date.now() to a fixed value so all three calls land in the same ms.
+    // With Date.now() directly, all three facts share the same createdAt.
+    // With the monotonic now(), each call bumps by 1ms → strictly increasing timestamps.
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    const a = await rememberFact('fact about zebra alpha');
+    const b = await rememberFact('fact about zebra beta');
+    const c = await rememberFact('fact about zebra gamma');
+    vi.restoreAllMocks();
+
+    // The createdAt values must be strictly ordered so topFacts() can tiebreak
+    // by recency without falling back to nondeterministic UUID ordering.
+    expect(b!.createdAt).toBeGreaterThan(a!.createdAt);
+    expect(c!.createdAt).toBeGreaterThan(b!.createdAt);
   });
 });

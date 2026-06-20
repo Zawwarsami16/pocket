@@ -1,4 +1,4 @@
-import { db, uid, type Fact } from './schema';
+import { db, uid, now, type Fact } from './schema';
 
 const STOP = new Set(['the','a','an','to','of','and','or','for','on','in','with','at','by','is','are','was','were','be','been','this','that','it','as','if','from','i','you','he','she','they','we','me','my','your','our']);
 
@@ -19,7 +19,7 @@ export async function rememberFact(text: string, sessionId?: string): Promise<Fa
     await db.facts.update(dup.id, { hits: (dup.hits || 0) + 1 });
     return { ...dup, hits: (dup.hits || 0) + 1 };
   }
-  const f: Fact = { id: uid(), text: t, tags, createdAt: Date.now(), hits: 0, sessionId };
+  const f: Fact = { id: uid(), text: t, tags, createdAt: now(), hits: 0, sessionId };
   await db.facts.put(f);
   return f;
 }
