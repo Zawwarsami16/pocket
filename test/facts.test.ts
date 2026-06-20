@@ -65,6 +65,15 @@ describe('recallFacts', () => {
     const reread = await db.facts.get(f!.id);
     expect(reread!.hits).toBe(1);
   });
+
+  it('returns facts with already-incremented hit counts (not stale pre-update values)', async () => {
+    await rememberFact('User owns a kayak');
+    const hits = await recallFacts('kayak');
+    // The returned objects must reflect the increment written to the DB,
+    // matching the contract of rememberFact which also returns the updated value.
+    expect(hits).toHaveLength(1);
+    expect(hits[0].hits).toBe(1);
+  });
 });
 
 describe('topFacts', () => {
