@@ -4,6 +4,7 @@ import type { Provider, ChatChunk } from '../src/providers/types';
 // Drive sendTurn against a fake provider so we exercise the real db/window/
 // memory pipeline without hitting the network.
 let fakeChat: (signal?: AbortSignal) => AsyncGenerator<ChatChunk>;
+let capturedChatReq: any = null;
 
 vi.mock('../src/providers/registry', () => ({
   getProvider: (): Provider => ({
@@ -13,15 +14,17 @@ vi.mock('../src/providers/registry', () => ({
     defaultBaseUrl: '',
     corsStatus: 'ok',
     listModels: async () => [],
-    chat: (_req: unknown, _key: string, _baseUrl: string | undefined, signal?: AbortSignal) =>
-      fakeChat(signal)
+    chat: (req: any, _key: string, _baseUrl: string | undefined, signal?: AbortSignal) => {
+      capturedChatReq = req;
+      return fakeChat(signal);
+    }
   })
 }));
 
 import { sendTurn } from '../src/ai/chat';
 import { db, type Session } from '../src/db/schema';
 import { setKey } from '../src/db/keystore';
-import { listMessages } from '../src/db/messages';
+import { listMessages, appendMessage } from '../src/db/messages';
 
 const session: Session = {
   id: 's1',
@@ -97,6 +100,27 @@ describe('sendTurn', () => {
     expect(content).toContain('Partial');
     expect(content).not.toContain(' more');
     expect(content).toContain('_[stopped]_');
+  });
+
+  it('folds windowed summary into req.system so providers receive the compacted context', async () => {
+    // Seed 4 long messages so windowing fires (maxInputTokens=50, keepLast=2).
+    // Each 300-char turn is ~75 tokens — well over the 50-token budget.
+    for (let i = 0; i < 4; i++) {
+      await appendMessage(session.id, i % 2 === 0 ? 'user' : 'assistant', 'x'.repeat(300));
+    }
+    capturedChatReq = null;
+    fakeChat = async function* () { yield { type: 'delta', text: 'ok' }; };
+
+    await sendTurn(session, 'new msg', [], {}, { maxInputTokens: 50, keepLast: 2 });
+
+    expect(capturedChatReq).not.toBeNull();
+    // Compacted context must be in the system prompt, not silently dropped.
+    expect(capturedChatReq.system).toContain('Earlier conversation (compacted');
+    // Providers filter role='system' from req.messages — there must be none there.
+    const sysInMsgs = (capturedChatReq.messages as any[]).filter((m) => m.role === 'system');
+    expect(sysInMsgs).toHaveLength(0);
+    // Tail turns (user/assistant) must still be present.
+    expect(capturedChatReq.messages.length).toBeGreaterThan(0);
   });
 
   it('records an error and does not append the stopped marker on a real failure', async () => {
