@@ -82,6 +82,17 @@ export async function sendTurn(session: Session, userText: string, attachmentIds
     keepLast: opts.keepLast ?? 16
   });
 
+  // When windowing fired, the first message is a synthetic role='system' summary of
+  // the compacted head. Neither chatOAI nor anthropic.chat includes role='system'
+  // items from req.messages (they only use req.system), so the summary would be
+  // silently dropped. Fold it into the system prompt and pass only the tail turns
+  // (non-system) to the provider so the model actually sees the compacted context.
+  const compactedCtx: string | null =
+    windowed.summarizedCount > 0 && windowed.messages[0]?.role === 'system'
+      ? (windowed.messages[0].parts[0]?.text ?? null)
+      : null;
+  const providerMessages = compactedCtx ? windowed.messages.slice(1) : windowed.messages;
+
   const [presence, entitySnap, recall] = await Promise.all([
     getPresence(),
     snapshotEntity(session.id),
@@ -94,9 +105,10 @@ export async function sendTurn(session: Session, userText: string, attachmentIds
   const baseSys = session.systemPrompt?.trim() || presence;
   const parts = [baseSys, entityBlock];
   if (recall) parts.push(recall);
+  if (compactedCtx) parts.push(compactedCtx);
   const system = parts.join('\n\n');
 
-  const inputEst = estimateMessagesTokens(windowed.messages.map((t) => ({ role: t.role, content: t.parts.map((p) => p.text || '').join(' ') })));
+  const inputEst = estimateMessagesTokens(providerMessages.map((t) => ({ role: t.role, content: t.parts.map((p) => p.text || '').join(' ') })));
 
   let buffer = '';
   let inTok = 0, outTok = 0;
@@ -119,7 +131,7 @@ export async function sendTurn(session: Session, userText: string, attachmentIds
       {
         modelId: session.modelId,
         system,
-        messages: windowed.messages,
+        messages: providerMessages,
         cacheSystem: opts.cacheSystem ?? true
       },
       keyEntry.apiKey,
