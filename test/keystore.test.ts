@@ -7,6 +7,7 @@ import {
   getKey,
   getActive,
   setActive,
+  clearActive,
   getSetting,
   setSetting
 } from '../src/db/keystore';
@@ -68,6 +69,36 @@ describe('removeKey', () => {
     await setKey({ providerId: 'openai', apiKey: 'k1', addedAt: 1 });
     await removeKey('nope');
     expect(await getKeys()).toHaveLength(1);
+  });
+
+  it('clears the active pointer when the removed provider was active', async () => {
+    // Pre-fix: removing the active provider's key left activeProvider pointing
+    // at a provider with no credentials, so the next sendTurn failed with
+    // "No API key set" and "New chat" bound sessions to the dead provider.
+    await setKey({ providerId: 'openai', apiKey: 'k1', addedAt: 1 });
+    await setActive('openai', 'gpt-4');
+
+    await removeKey('openai');
+
+    expect(await getActive()).toEqual({ providerId: undefined, modelId: undefined });
+  });
+
+  it('leaves the active pointer alone when a different provider is removed', async () => {
+    await setKey({ providerId: 'openai', apiKey: 'k1', addedAt: 1 });
+    await setKey({ providerId: 'anthropic', apiKey: 'k2', addedAt: 2 });
+    await setActive('anthropic', 'claude');
+
+    await removeKey('openai');
+
+    expect(await getActive()).toEqual({ providerId: 'anthropic', modelId: 'claude' });
+  });
+});
+
+describe('clearActive', () => {
+  it('resets both provider and model to undefined', async () => {
+    await setActive('openai', 'gpt-4');
+    await clearActive();
+    expect(await getActive()).toEqual({ providerId: undefined, modelId: undefined });
   });
 });
 
