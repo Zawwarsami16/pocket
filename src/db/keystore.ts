@@ -35,6 +35,13 @@ export async function setKey(entry: KeyEntry) {
 export async function removeKey(providerId: string) {
   const all = await getKeys();
   await write(KEYS_KEY, all.filter((k) => k.providerId !== providerId));
+  // The active pointer is a separate setting from the key list, so removing
+  // a key would leave activeProvider pointing at a provider that no longer
+  // has credentials. Any subsequent sendTurn then fails with "No API key set"
+  // and "New chat" creates sessions bound to the dead provider. Clear the
+  // pointer here so the UI falls back to the settings picker instead.
+  const active = await read<string | undefined>(ACTIVE_KEY, undefined);
+  if (active === providerId) await clearActive();
 }
 
 export async function getKey(providerId: string): Promise<KeyEntry | undefined> {
@@ -53,6 +60,11 @@ export async function getActive(): Promise<{ providerId?: string; modelId?: stri
 export async function setActive(providerId: string, modelId: string) {
   await write(ACTIVE_KEY, providerId);
   await write(ACTIVE_MODEL, modelId);
+}
+
+export async function clearActive() {
+  await write(ACTIVE_KEY, null);
+  await write(ACTIVE_MODEL, null);
 }
 
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {
