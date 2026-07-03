@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { db } from '../src/db/schema';
-import { appendMessage, listMessages, updateMessage, deleteMessage, deleteFrom } from '../src/db/messages';
+import { appendMessage, listMessages, updateMessage, deleteMessage, deleteFrom, takeUserMessageForRegen } from '../src/db/messages';
 
 beforeEach(async () => {
   await db.messages.clear();
@@ -84,6 +84,61 @@ describe('deleteFrom', () => {
 
     await deleteFrom('BBB');
     expect((await listMessages('s1')).map((m) => m.id)).toEqual(['AAA']);
+  });
+});
+
+describe('takeUserMessageForRegen', () => {
+  // The regen button lives on EVERY user bubble. App.tsx's handler used to
+  // discard the id and always re-send the LAST user message — so regenerating
+  // a mid-thread user turn (or the "save & regen" edit flow) silently replayed
+  // an earlier one instead of the target. This helper is the fix's contract.
+
+  it('returns the target user message content + attachmentIds and deletes from that message onward', async () => {
+    await appendMessage('s1', 'user', 'first ask', { id: 'u1', createdAt: 100, attachmentIds: ['a1'] });
+    await appendMessage('s1', 'assistant', 'first reply', { id: 'a1r', createdAt: 200 });
+    await appendMessage('s1', 'user', 'second ask', { id: 'u2', createdAt: 300, attachmentIds: ['a2', 'a3'] });
+    await appendMessage('s1', 'assistant', 'second reply', { id: 'a2r', createdAt: 400 });
+
+    const snap = await takeUserMessageForRegen('u2');
+    expect(snap).toEqual({ content: 'second ask', attachmentIds: ['a2', 'a3'] });
+    // u2 and everything after must be gone; u1 and a1r must remain.
+    expect((await listMessages('s1')).map((m) => m.id)).toEqual(['u1', 'a1r']);
+  });
+
+  it('regenerates a mid-thread turn (not the latest one)', async () => {
+    // The concrete bug it fixes: click regen on user #1 of two, do NOT replay #2.
+    await appendMessage('s1', 'user', 'mid ask', { id: 'u1', createdAt: 100 });
+    await appendMessage('s1', 'assistant', 'mid reply', { id: 'a1r', createdAt: 200 });
+    await appendMessage('s1', 'user', 'later ask', { id: 'u2', createdAt: 300 });
+    await appendMessage('s1', 'assistant', 'later reply', { id: 'a2r', createdAt: 400 });
+
+    const snap = await takeUserMessageForRegen('u1');
+    expect(snap?.content).toBe('mid ask');
+    // deleteFrom cascades — u1 and everything after it (a1r/u2/a2r) all gone.
+    expect(await listMessages('s1')).toEqual([]);
+  });
+
+  it('returns empty attachmentIds when the message had none', async () => {
+    await appendMessage('s1', 'user', 'plain', { id: 'u1', createdAt: 100 });
+    const snap = await takeUserMessageForRegen('u1');
+    expect(snap).toEqual({ content: 'plain', attachmentIds: [] });
+  });
+
+  it('returns null for an unknown id and leaves the store untouched', async () => {
+    await appendMessage('s1', 'user', 'a', { id: 'u1', createdAt: 100 });
+    const snap = await takeUserMessageForRegen('missing');
+    expect(snap).toBeNull();
+    expect((await listMessages('s1')).map((m) => m.id)).toEqual(['u1']);
+  });
+
+  it('returns null for an assistant message and leaves the row alone', async () => {
+    // The button is on user bubbles only, but this is a public helper — a
+    // non-user id must be a no-op, not silently drop an assistant reply.
+    await appendMessage('s1', 'user', 'q', { id: 'u1', createdAt: 100 });
+    await appendMessage('s1', 'assistant', 'a', { id: 'a1', createdAt: 200 });
+    const snap = await takeUserMessageForRegen('a1');
+    expect(snap).toBeNull();
+    expect((await listMessages('s1')).map((m) => m.id)).toEqual(['u1', 'a1']);
   });
 });
 
