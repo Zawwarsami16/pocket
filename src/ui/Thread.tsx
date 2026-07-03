@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Message } from '../db/schema';
 import { Markdown } from './Markdown';
 import { getAttachments } from '../db/attachments';
-import { deleteFrom, deleteMessage, updateMessage } from '../db/messages';
+import { deleteMessage, updateMessage } from '../db/messages';
 
 interface Props {
   sessionId: string;
@@ -101,7 +101,8 @@ function Bubble({ m, onRegenerate }: { m: Message; onRegenerate?: (fromUserMessa
 
   async function regenerate() {
     if (!onRegenerate) return;
-    await deleteFrom(m.id);
+    // The parent looks the message up (content + attachmentIds) before deleting
+    // — doing the delete here first drops the row we need to replay.
     onRegenerate(m.id);
   }
 

@@ -15,7 +15,7 @@ import { setSessionModel, createSession } from '../db/sessions';
 import type { CompressMode } from '../ai/compress';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { initTheme } from './theme';
-import { listMessages } from '../db/messages';
+import { takeUserMessageForRegen } from '../db/messages';
 import { maybeGenerateDailyReflection, formatReflection } from '../ai/reflect';
 import { isVaultEnabled, isLocked, unlockVault } from '../db/vault';
 
@@ -128,14 +128,16 @@ export default function App() {
     setBusy(false);
   }
 
-  async function regenerateFrom(_userMessageId: string) {
+  async function regenerateFrom(userMessageId: string) {
     if (!session) return;
-    const msgs = await listMessages(session.id);
-    const lastUser = [...msgs].reverse().find((m) => m.role === 'user');
-    if (!lastUser) return;
-    const { deleteFrom } = await import('../db/messages');
-    await deleteFrom(lastUser.id);
-    await send(lastUser.content, lastUser.attachmentIds || []);
+    // Replay THIS user message, not just the latest one — the button lives on
+    // every user bubble and "save & regen" from an in-place edit both point at
+    // a specific id. The prior code discarded the id and always re-sent the
+    // last user message, so mid-thread regen (and the save-and-regen path from
+    // an edit) silently regenerated a stale earlier turn instead.
+    const snap = await takeUserMessageForRegen(userMessageId);
+    if (!snap) return;
+    await send(snap.content, snap.attachmentIds);
   }
 
   async function applySettings(providerId: string, modelId: string) {

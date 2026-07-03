@@ -39,3 +39,18 @@ export async function deleteFrom(id: string) {
   const ids = ordered.slice(from).map((m) => m.id);
   await db.messages.bulkDelete(ids);
 }
+
+// Read a user message's content + attachments, then delete it (and everything
+// after) so the caller can re-send it as a fresh turn. Returns null if the id
+// is missing or the target isn't a user message — the regen button lives only
+// on user bubbles, so a non-user hit means the row was already deleted (double
+// click) or the caller mis-targeted.
+export async function takeUserMessageForRegen(
+  id: string
+): Promise<{ content: string; attachmentIds: string[] } | null> {
+  const msg = await db.messages.get(id);
+  if (!msg || msg.role !== 'user') return null;
+  const snapshot = { content: msg.content, attachmentIds: msg.attachmentIds ?? [] };
+  await deleteFrom(id);
+  return snapshot;
+}
