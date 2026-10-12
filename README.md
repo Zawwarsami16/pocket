@@ -15,7 +15,8 @@
 [![Live demo](https://img.shields.io/badge/demo-live-ff003c?style=flat-square&labelColor=0a0a0a)](https://pocket-tau-sepia.vercel.app)
 
 > **Live:** [pocket-tau-sepia.vercel.app](https://pocket-tau-sepia.vercel.app)  
-> **Feedback welcome:** [Report a reproducible provider, browser, or UX problem](https://github.com/Zawwarsami16/pocket/issues/new). Please omit API keys and private chat content.
+> **New to Pocket?** [Try the five-minute first-use review — no API key required](https://github.com/Zawwarsami16/pocket/issues/19).  
+> **Already using it?** [Report a reproducible provider, browser, or UX problem](https://github.com/Zawwarsami16/pocket/issues/new). Please omit API keys and private chat content.
 
 Browser-only AI chat. Paste a supported provider key — Anthropic, OpenRouter, Groq, Together, or a compatible endpoint — and the model picker fills itself. Chats, attachments, and remembered facts are stored locally in IndexedDB. When you use a hosted model, Pocket sends requests directly from your browser to the selected provider; Pocket itself has no backend.
 
