@@ -14,9 +14,10 @@
 [![IndexedDB](https://img.shields.io/badge/storage-IndexedDB-ff003c?style=flat-square&labelColor=0a0a0a)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
 [![Live demo](https://img.shields.io/badge/demo-live-ff003c?style=flat-square&labelColor=0a0a0a)](https://pocket-tau-sepia.vercel.app)
 
-> **Live:** [pocket-tau-sepia.vercel.app](https://pocket-tau-sepia.vercel.app)
+> **Live:** [pocket-tau-sepia.vercel.app](https://pocket-tau-sepia.vercel.app)  
+> **Feedback welcome:** [Report a reproducible provider, browser, or UX problem](https://github.com/Zawwarsami16/pocket/issues/new). Please omit API keys and private chat content.
 
-Browser-only AI chat. Paste any API key — Anthropic, OpenRouter, Groq, Together, or any OpenAI-compatible endpoint — and the model picker fills itself. Chats, attachments, and remembered facts all live in IndexedDB on the device. Nothing on a server.
+Browser-only AI chat. Paste a supported provider key — Anthropic, OpenRouter, Groq, Together, or a compatible endpoint — and the model picker fills itself. Chats, attachments, and remembered facts are stored locally in IndexedDB. When you use a hosted model, Pocket sends requests directly from your browser to the selected provider; Pocket itself has no backend.
 
 ![Pocket welcome screen](docs/screenshots/welcome.png)
 
@@ -156,4 +157,4 @@ Vite + React + TypeScript. Tailwind for styling. Dexie (IndexedDB) for local sto
 
 ## License
 
-Personal use.
+MIT. See [`LICENSE`](LICENSE).
