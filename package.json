@@ -28,7 +28,7 @@
     "fake-indexeddb": "^6.2.5",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vite": "^6.4.2",
     "vitest": "^3.2.6"
   }
